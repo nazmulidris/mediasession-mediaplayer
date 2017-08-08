@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * Exposes the functionality of the {@link MediaPlayer} and implements the {@link PlayerAdapter}
  * so that {@link MainActivity} can control music playback.
  */
-public final class MediaPlayerHolder implements PlayerAdapter {
+public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCompletionListener {
 
     public static final int PLAYBACK_POSITION_REFRESH_INTERVAL_MS = 1000;
 
@@ -46,8 +46,9 @@ public final class MediaPlayerHolder implements PlayerAdapter {
     private MediaMetadataCompat mCurrentMedia;
     private int mState;
 
-    public MediaPlayerHolder(Context context) {
+    public MediaPlayerHolder(Context context, PlaybackInfoListener listener) {
         mContext = context.getApplicationContext();
+        mPlaybackInfoListener = listener;
     }
 
     /**
@@ -60,23 +61,9 @@ public final class MediaPlayerHolder implements PlayerAdapter {
     private void initializeMediaPlayer() {
         if (mMediaPlayer == null) {
             mMediaPlayer = new MediaPlayer();
-            mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mediaPlayer) {
-                    stopUpdatingCallbackWithPosition(true);
-                    logToUI("MediaPlayer playback completed");
-                    if (mPlaybackInfoListener != null) {
-                        mPlaybackInfoListener.onPlaybackCompleted();
-                    }
-                    updatePlaybackState(PlaybackInfoListener.State.COMPLETED);
-                }
-            });
+            mMediaPlayer.setOnCompletionListener(this);
             logToUI("mMediaPlayer = new MediaPlayer()");
         }
-    }
-
-    public void setPlaybackInfoListener(PlaybackInfoListener listener) {
-        mPlaybackInfoListener = listener;
     }
 
     // Implements PlaybackControl.
@@ -105,7 +92,7 @@ public final class MediaPlayerHolder implements PlayerAdapter {
             return;
         } else if (mediaChanged) {
             // Don't reuse a MediaPlayer object for a new media item.
-            release();
+            stop();
         }
 
         mResourceId = resourceId;
@@ -135,10 +122,13 @@ public final class MediaPlayerHolder implements PlayerAdapter {
     }
 
     @Override
-    public void release() {
+    public void stop() {
+        // Regardless of whether or not the MediaPlayer has been created / started, the state must
+        // be updated, so that MediaNotificationManager can take down the notification.
+        updatePlaybackState(PlaybackInfoListener.State.STOPPED);
         if (mMediaPlayer != null) {
             stopUpdatingCallbackWithPosition(true);
-            logToUI("release() and mMediaPlayer = null");
+            logToUI("stop() and mMediaPlayer = null");
             mMediaPlayer.release();
             mMediaPlayer = null;
         }
@@ -171,9 +161,17 @@ public final class MediaPlayerHolder implements PlayerAdapter {
         }
     }
 
+    @Override
+    public void onCompletion(MediaPlayer mediaPlayer) {
+        stopUpdatingCallbackWithPosition(true);
+        logToUI("MediaPlayer playback completed");
+        mPlaybackInfoListener.onPlaybackCompleted();
+        updatePlaybackState(PlaybackInfoListener.State.STOPPED);
+    }
+
     private void updatePlaybackState(@PlaybackInfoListener.State int newPlayerState) {
         switch (newPlayerState) {
-            case PlaybackInfoListener.State.COMPLETED:
+            case PlaybackInfoListener.State.STOPPED:
                 mState = PlaybackStateCompat.STATE_STOPPED;
                 break;
             case PlaybackInfoListener.State.INVALID:
@@ -186,14 +184,15 @@ public final class MediaPlayerHolder implements PlayerAdapter {
                 mState = PlaybackStateCompat.STATE_PLAYING;
                 break;
         }
-        if (mPlaybackInfoListener != null) {
-            mPlaybackInfoListener.onStateChanged(newPlayerState);
-            PlaybackStateCompat.Builder stateBuilder =
-                    new PlaybackStateCompat.Builder().setActions(getAvailableActions());
-            stateBuilder.setState(
-                    mState, mMediaPlayer.getCurrentPosition(), 1.0f, SystemClock.elapsedRealtime());
-            mPlaybackInfoListener.onPlaybackStatusChanged(stateBuilder.build());
-        }
+        mPlaybackInfoListener.onStateChanged(newPlayerState);
+        PlaybackStateCompat.Builder stateBuilder =
+                new PlaybackStateCompat.Builder().setActions(getAvailableActions());
+        stateBuilder.setState(
+                mState,
+                mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
+                1.0f,
+                SystemClock.elapsedRealtime());
+        mPlaybackInfoListener.onPlaybackStatusChanged(stateBuilder.build());
     }
 
     @PlaybackStateCompat.Actions

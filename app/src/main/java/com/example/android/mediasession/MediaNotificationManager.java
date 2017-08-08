@@ -152,7 +152,7 @@ public class MediaNotificationManager extends BroadcastReceiver {
             try {
                 mService.unregisterReceiver(this);
             } catch (IllegalArgumentException ex) {
-                // ignore receiver not registered
+                // Ignore receiver not registered.
             }
             mService.stopSelf();
             return;

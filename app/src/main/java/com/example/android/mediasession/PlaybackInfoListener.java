@@ -26,14 +26,14 @@ import java.lang.annotation.RetentionPolicy;
 
 public interface PlaybackInfoListener {
 
-    @IntDef({State.INVALID, State.PLAYING, State.PAUSED, State.COMPLETED})
+    @IntDef({State.INVALID, State.PLAYING, State.PAUSED, State.STOPPED})
     @Retention(RetentionPolicy.SOURCE)
     @interface State {
 
         int INVALID = -1;
         int PLAYING = 0;
         int PAUSED = 1;
-        int COMPLETED = 2;
+        int STOPPED = 2;
     }
 
     void onLogUpdated(String formattedMessage);

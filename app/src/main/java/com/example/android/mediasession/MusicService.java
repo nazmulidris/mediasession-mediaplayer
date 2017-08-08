@@ -31,7 +31,9 @@ public class MusicService extends MediaBrowserServiceCompat {
 
     private MediaSessionCompat mSession;
     private MediaPlayerHolder mPlayback;
+    private MediaNotificationManager mMediaNotificationManager;
     public MediaSessionCallback mCallback;
+    protected MediaPlayerHolderListener mMediaPlayerHolderListener;
 
     @Override
     public void onCreate() {
@@ -46,43 +48,15 @@ public class MusicService extends MediaBrowserServiceCompat {
                 | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
         setSessionToken(mSession.getSessionToken());
 
-        final MediaNotificationManager mediaNotificationManager =
-                new MediaNotificationManager(this);
+        mMediaNotificationManager = new MediaNotificationManager(this);
 
-        mPlayback = new MediaPlayerHolder(this);
-        mPlayback.setPlaybackInfoListener(new PlaybackInfoListener() {
-            @Override
-            public void onLogUpdated(String formattedMessage) {
-            }
-
-            @Override
-            public void onDurationChanged(int duration) {
-            }
-
-            @Override
-            public void onPositionChanged(int position) {
-            }
-
-            @Override
-            public void onStateChanged(@State int state) {
-            }
-
-            @Override
-            public void onPlaybackCompleted() {
-            }
-
-            @Override
-            public void onPlaybackStatusChanged(PlaybackStateCompat state) {
-                mSession.setPlaybackState(state);
-                mediaNotificationManager.update(
-                        mPlayback.getCurrentMedia(), state, getSessionToken());
-            }
-        });
+        mMediaPlayerHolderListener = new MediaPlayerHolderListener();
+        mPlayback = new MediaPlayerHolder(this, mMediaPlayerHolderListener);
     }
 
     @Override
     public void onDestroy() {
-        mPlayback.release();
+        mPlayback.stop();
         mSession.release();
     }
 
@@ -95,6 +69,38 @@ public class MusicService extends MediaBrowserServiceCompat {
     public void onLoadChildren(
             final String parentMediaId, final Result<List<MediaBrowserCompat.MediaItem>> result) {
         result.sendResult(MusicLibrary.getMediaItems());
+    }
+
+    public class MediaPlayerHolderListener implements PlaybackInfoListener {
+
+        @Override
+        public void onLogUpdated(String formattedMessage) {
+        }
+
+        @Override
+        public void onDurationChanged(int duration) {
+        }
+
+        @Override
+        public void onPositionChanged(int position) {
+        }
+
+        @Override
+        public void onStateChanged(@State int state) {
+        }
+
+        @Override
+        public void onPlaybackCompleted() {
+        }
+
+        @Override
+        public void onPlaybackStatusChanged(PlaybackStateCompat state) {
+            // Report the state to the MediaSession, and update the notification.
+            mSession.setPlaybackState(state);
+            // This might shutdown the service, if it is no longer needed.
+            mMediaNotificationManager.update(
+                    mPlayback.getCurrentMedia(), state, getSessionToken());
+        }
     }
 
     public class MediaSessionCallback extends MediaSessionCompat.Callback {

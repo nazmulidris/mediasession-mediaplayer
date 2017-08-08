@@ -242,7 +242,7 @@ public class MainActivity extends AppCompatActivity {
             mCurrentState = state.getState();
         }
         logToUI(String.format("updatePlaybackState(%s)",
-                              state == null ? "null" : state.toString()));
+                              state == null ? "null" : state.getPlaybackState().toString()));
 /*
             if (state == null
                 || state.getState() == PlaybackState.STATE_PAUSED
@@ -261,7 +261,7 @@ public class MainActivity extends AppCompatActivity {
     private void updateMetadata(@Nullable MediaMetadataCompat metadata) {
         mCurrentMetadata = metadata;
         logToUI(String.format("updateMetadata(%s)",
-                              metadata == null ? "null" : metadata.toString()));
+                              metadata == null ? "null" : metadata.getDescription().toString()));
 /*
             mTitle.setText(metadata == null ? "" : metadata.getDescription().getTitle());
             mSubtitle.setText(metadata == null ? "" : metadata.getDescription().getSubtitle());

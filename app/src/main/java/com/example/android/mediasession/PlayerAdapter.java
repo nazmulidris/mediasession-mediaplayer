@@ -30,7 +30,7 @@ public interface PlayerAdapter {
 
     void loadAndPlayMedia(int resourceId);
 
-    void release();
+    void stop();
 
     boolean isPlaying();
 
