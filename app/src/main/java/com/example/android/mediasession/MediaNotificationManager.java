@@ -19,20 +19,25 @@
 package com.example.android.mediasession;
 
 import android.app.Notification;
+import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.support.annotation.NonNull;
+import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.app.NotificationCompat.MediaStyle;
 import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
-import android.support.v7.app.NotificationCompat;
 import android.util.Log;
+
 
 /**
  * Keeps track of a notification and updates it automatically for a given MediaSession. This is
@@ -43,11 +48,12 @@ public class MediaNotificationManager extends BroadcastReceiver {
     private static final String TAG = "MS_NotificationManager";
     private static final int NOTIFICATION_ID = 412;
     private static final int REQUEST_CODE = 100;
+    private static final String CHANNEL_ID = "com.example.android.musicplayer.channel";
 
-    private static final String ACTION_PAUSE = "com.example.android.musicplayercodelab.pause";
-    private static final String ACTION_PLAY = "com.example.android.musicplayercodelab.play";
-    private static final String ACTION_NEXT = "com.example.android.musicplayercodelab.next";
-    private static final String ACTION_PREV = "com.example.android.musicplayercodelab.prev";
+    private static final String ACTION_PAUSE = "com.example.android.musicplayer.pause";
+    private static final String ACTION_PLAY = "com.example.android.musicplayer.play";
+    private static final String ACTION_NEXT = "com.example.android.musicplayer.next";
+    private static final String ACTION_PREV = "com.example.android.musicplayer.prev";
 
     private final MusicService mService;
 
@@ -167,13 +173,14 @@ public class MediaNotificationManager extends BroadcastReceiver {
             return;
         }
         boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
+        createChannel();
         NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(mService);
+                new NotificationCompat.Builder(mService, CHANNEL_ID);
         MediaDescriptionCompat description = metadata.getDescription();
 
         notificationBuilder
                 .setStyle(
-                        new NotificationCompat.MediaStyle()
+                        new MediaStyle()
                                 .setMediaSession(token)
                                 .setShowActionsInCompactView(0, 1, 2))
                 .setColor(
@@ -191,14 +198,14 @@ public class MediaNotificationManager extends BroadcastReceiver {
                 .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
                         mService, PlaybackStateCompat.ACTION_STOP));
 
-        // If skip to next action is enabled
+        // If skip to next action is enabled.
         if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS) != 0) {
             notificationBuilder.addAction(mPrevAction);
         }
 
         notificationBuilder.addAction(isPlaying ? mPauseAction : mPlayAction);
 
-        // If skip to prev action is enabled
+        // If skip to prev action is enabled.
         if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_NEXT) != 0) {
             notificationBuilder.addAction(mNextAction);
         }
@@ -206,8 +213,8 @@ public class MediaNotificationManager extends BroadcastReceiver {
         Notification notification = notificationBuilder.build();
 
         if (isPlaying && !mStarted) {
-            mService.startService(
-                    new Intent(mService.getApplicationContext(), MusicService.class));
+            Intent intent = new Intent(mService.getApplicationContext(), MusicService.class);
+            ContextCompat.startForegroundService(mService, intent);
             mService.startForeground(NOTIFICATION_ID, notification);
             mStarted = true;
         } else {
@@ -217,6 +224,28 @@ public class MediaNotificationManager extends BroadcastReceiver {
             }
             mNotificationManager.notify(NOTIFICATION_ID, notification);
         }
+    }
+
+    private void createChannel() {
+        NotificationManager mNotificationManager =
+                (NotificationManager) mService.getSystemService(Context.NOTIFICATION_SERVICE);
+        // The id of the channel.
+        String id = CHANNEL_ID;
+        // The user-visible name of the channel.
+        CharSequence name = "MediaSession";
+        // The user-visible description of the channel.
+        String description = "MediaSession and MediaPlayer";
+        int importance = NotificationManager.IMPORTANCE_LOW;
+        NotificationChannel mChannel = new NotificationChannel(id, name, importance);
+        // Configure the notification channel.
+        mChannel.setDescription(description);
+        mChannel.enableLights(true);
+        // Sets the notification light color for notifications posted to this
+        // channel, if the device supports this feature.
+        mChannel.setLightColor(Color.RED);
+        mChannel.enableVibration(true);
+        mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+        mNotificationManager.createNotificationChannel(mChannel);
     }
 
     private PendingIntent createContentIntent() {
