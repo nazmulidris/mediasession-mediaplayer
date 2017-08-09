@@ -37,7 +37,7 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
-    public static final String TAG = "MainActivity";
+    private static final String TAG = "MS_MainActivity";
 
     private TextView mTextDebug;
     private Button mButtonPlay;

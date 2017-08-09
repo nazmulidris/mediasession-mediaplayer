@@ -128,8 +128,8 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     public void stop() {
         // Regardless of whether or not the MediaPlayer has been created / started, the state must
         // be updated, so that MediaNotificationManager can take down the notification.
-        release();
         updatePlaybackState(PlaybackInfoListener.State.STOPPED);
+        release();
         logToUI("stop() and updatePlaybackState(STOPPED)");
     }
 

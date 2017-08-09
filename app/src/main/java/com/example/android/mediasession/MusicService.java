@@ -30,7 +30,8 @@ import java.util.List;
 
 public class MusicService extends MediaBrowserServiceCompat {
 
-    private static final String TAG = "MusicService";
+    private static final String TAG = "MS_MusicService";
+
     private MediaSessionCompat mSession;
     private MediaPlayerHolder mPlayback;
     private MediaNotificationManager mMediaNotificationManager;
@@ -133,7 +134,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         @Override
         public void onStop() {
-            stopSelf();
+            mPlayback.stop();
         }
 
         @Override

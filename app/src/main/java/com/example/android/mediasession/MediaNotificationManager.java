@@ -28,6 +28,7 @@ import android.content.IntentFilter;
 import android.support.annotation.NonNull;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.NotificationCompat;
@@ -39,6 +40,7 @@ import android.util.Log;
  */
 public class MediaNotificationManager extends BroadcastReceiver {
 
+    private static final String TAG = "MS_NotificationManager";
     private static final int NOTIFICATION_ID = 412;
     private static final int REQUEST_CODE = 100;
 
@@ -46,7 +48,6 @@ public class MediaNotificationManager extends BroadcastReceiver {
     private static final String ACTION_PLAY = "com.example.android.musicplayercodelab.play";
     private static final String ACTION_NEXT = "com.example.android.musicplayercodelab.next";
     private static final String ACTION_PREV = "com.example.android.musicplayercodelab.prev";
-    private static final String TAG = "NotificationManager";
 
     private final MusicService mService;
 
@@ -186,7 +187,9 @@ public class MediaNotificationManager extends BroadcastReceiver {
                 .setOngoing(isPlaying)
                 .setWhen(isPlaying ? System.currentTimeMillis() - state.getPosition() : 0)
                 .setShowWhen(isPlaying)
-                .setUsesChronometer(isPlaying);
+                .setUsesChronometer(isPlaying)
+                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        mService, PlaybackStateCompat.ACTION_STOP));
 
         // If skip to next action is enabled
         if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS) != 0) {
