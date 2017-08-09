@@ -37,6 +37,16 @@ class MusicLibrary {
 
     static {
         createMediaMetadataCompat(
+                "test_snippet",
+                "Test Snippet",
+                "The 126ers",
+                "Youtube Audio Library Rock 2",
+                "Rock",
+                9,
+                R.raw.trimmed,
+                R.drawable.album_youtube_audio_library_rock_2,
+                "album_youtube_audio_library_rock_2");
+        createMediaMetadataCompat(
                 "Jazz_In_Paris",
                 "Jazz in Paris",
                 "Media Right Productions",
@@ -116,7 +126,7 @@ class MusicLibrary {
         // We don't set it initially on all items so that they don't take unnecessary memory.
         MediaMetadataCompat.Builder builder = new MediaMetadataCompat.Builder();
         for (String key :
-                new String[] {
+                new String[]{
                         MediaMetadataCompat.METADATA_KEY_MEDIA_ID,
                         MediaMetadataCompat.METADATA_KEY_ALBUM,
                         MediaMetadataCompat.METADATA_KEY_ARTIST,
