@@ -24,11 +24,13 @@ import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
 import java.util.List;
 
 public class MusicService extends MediaBrowserServiceCompat {
 
+    private static final String TAG = "MusicService";
     private MediaSessionCompat mSession;
     private MediaPlayerHolder mPlayback;
     private MediaNotificationManager mMediaNotificationManager;
@@ -75,6 +77,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         @Override
         public void onLogUpdated(String formattedMessage) {
+            Log.d(TAG, String.format("onLogUpdated: %s", formattedMessage));
         }
 
         @Override

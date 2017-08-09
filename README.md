@@ -4,7 +4,13 @@ Simple MediaPlayer Sample
 This sample demonstrates the use of `MediaSession` with `MediaPlayer`.
 Here are some important things this sample highlights:
 
-- Todo
+This project is a copy of the 
+[Playing music on cars and wearables codelab](https://codelabs.developers.google.com/codelabs/android-music-player/):
+
+The code has been modified to:
+- Use a different MediaPlayer wrapper (MediaPlayerHolder.java) that does
+  not do audio focus.
+- Have a super simple UI (no list view).
 
 Screenshots
 ===========
@@ -14,7 +20,7 @@ Screenshots
 License
 -------
 
-Copyright 2017 Google Inc. All rights reserved.
+Copyright 2017 Nazmul Idris. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

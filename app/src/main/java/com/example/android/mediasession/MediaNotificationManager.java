@@ -30,6 +30,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.NotificationCompat;
+import android.util.Log;
 
 /**
  * Keeps track of a notification and updates it automatically for a given MediaSession. This is
@@ -44,6 +45,7 @@ public class MediaNotificationManager extends BroadcastReceiver {
     private static final String ACTION_PLAY = "com.example.android.musicplayercodelab.play";
     private static final String ACTION_NEXT = "com.example.android.musicplayercodelab.next";
     private static final String ACTION_PREV = "com.example.android.musicplayercodelab.prev";
+    private static final String TAG = "NotificationManager";
 
     private final MusicService mService;
 
@@ -155,6 +157,7 @@ public class MediaNotificationManager extends BroadcastReceiver {
                 // Ignore receiver not registered.
             }
             mService.stopSelf();
+            Log.d(TAG, "update: stopForeground(), stopSelf()");
             return;
         }
         if (metadata == null) {

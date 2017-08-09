@@ -87,12 +87,15 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     @Override
     public void loadAndPlayMedia(int resourceId) {
         boolean mediaChanged = (resourceId != mResourceId);
-        if (!mediaChanged && isPlaying()) {
-            // Ignore multiple calls to play the same media that is already playing.
-            return;
-        } else if (mediaChanged) {
-            // Don't reuse a MediaPlayer object for a new media item.
-            stop();
+        if (!mediaChanged) {
+            if (isPlaying()) {
+                return;
+            } else {
+                play();
+                return;
+            }
+        } else {
+            release();
         }
 
         mResourceId = resourceId;
@@ -125,12 +128,17 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     public void stop() {
         // Regardless of whether or not the MediaPlayer has been created / started, the state must
         // be updated, so that MediaNotificationManager can take down the notification.
+        release();
         updatePlaybackState(PlaybackInfoListener.State.STOPPED);
+        logToUI("stop() and updatePlaybackState(STOPPED)");
+    }
+
+    private void release() {
         if (mMediaPlayer != null) {
             stopUpdatingCallbackWithPosition(true);
-            logToUI("stop() and mMediaPlayer = null");
             mMediaPlayer.release();
             mMediaPlayer = null;
+            logToUI("release() and mMediaPlayer = null");
         }
     }
 
