@@ -41,7 +41,7 @@ public class MusicService extends MediaBrowserServiceCompat {
     public void onCreate() {
         super.onCreate();
 
-        // Start a new MediaSession.
+        // Create a new MediaSession.
         mSession = new MediaSessionCompat(this, "MusicService");
         mCallback = new MediaSessionCallback();
         mSession.setCallback(mCallback);
@@ -60,6 +60,7 @@ public class MusicService extends MediaBrowserServiceCompat {
     public void onDestroy() {
         mPlayback.stop();
         mSession.release();
+        Log.d(TAG, "onDestroy: MediaPlayerHolder stopped, and MediaSession released");
     }
 
     @Override
@@ -77,7 +78,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         @Override
         public void onLogUpdated(String formattedMessage) {
-            Log.d(TAG, String.format("onLogUpdated: %s", formattedMessage));
+            Log.d(TAG, String.format("log: %s", formattedMessage));
         }
 
         @Override
@@ -115,6 +116,7 @@ public class MusicService extends MediaBrowserServiceCompat {
                     MusicLibrary.getMetadata(MusicService.this, mediaId);
             mSession.setMetadata(metadata);
             mPlayback.loadAndPlayMedia(metadata);
+            Log.d(TAG, "onPlayFromMediaId: MediaSession active");
         }
 
         @Override

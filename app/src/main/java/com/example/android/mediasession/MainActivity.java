@@ -37,6 +37,8 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity {
 
+    public static final String TAG = "MainActivity";
+
     private TextView mTextDebug;
     private Button mButtonPlay;
     private Button mButtonPause;
@@ -62,6 +64,12 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        mMediaBrowser =
+                new MediaBrowserCompat(
+                        this,
+                        new ComponentName(this, MusicService.class),
+                        mMediaBrowserConnectionCallback,
+                        null);
         initializeUI();
     }
 
@@ -142,28 +150,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onStart() {
         super.onStart();
-        mMediaBrowser =
-                new MediaBrowserCompat(
-                        this,
-                        new ComponentName(this, MusicService.class),
-                        mMediaBrowserConnectionCallback,
-                        null);
         mMediaBrowser.connect();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        MediaControllerCompat controller = MediaControllerCompat.getMediaController(this);
-        if (controller != null) {
-            controller.unregisterCallback(mMediaControllerCallback);
-        }
-        if (mMediaBrowser != null && mMediaBrowser.isConnected()) {
-            if (mCurrentMetadata != null) {
-                mMediaBrowser.unsubscribe(mCurrentMetadata.getDescription().getMediaId());
-            }
-            mMediaBrowser.disconnect();
-        }
+        mMediaBrowser.disconnect();
     }
 
     // Receives callbacks from the MediaBrowser when it has successfully connected to the
@@ -185,6 +178,17 @@ public class MainActivity extends AppCompatActivity {
                 throw new RuntimeException(e);
             }
         }
+
+        @Override
+        public void onConnectionSuspended() {
+            MediaControllerCompat mediaController = MediaControllerCompat
+                    .getMediaController(MainActivity.this);
+            if (mediaController != null) {
+                mediaController.unregisterCallback(mMediaControllerCallback);
+                MediaControllerCompat.setMediaController(MainActivity.this, null);
+            }
+        }
+
     }
 
     // Receives callbacks from the MediaBrowser when the MediaBrowserService has loaded new media

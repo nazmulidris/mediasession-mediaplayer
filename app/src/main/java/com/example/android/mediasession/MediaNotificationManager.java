@@ -25,6 +25,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.support.annotation.NonNull;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
@@ -145,11 +146,12 @@ public class MediaNotificationManager extends BroadcastReceiver {
 
     public void update(
             MediaMetadataCompat metadata,
-            PlaybackStateCompat state,
+            @NonNull PlaybackStateCompat state,
             MediaSessionCompat.Token token) {
-        if (state == null
-            || state.getState() == PlaybackStateCompat.STATE_STOPPED
-            || state.getState() == PlaybackStateCompat.STATE_NONE) {
+        boolean isNotPlaying =
+                state.getState() == PlaybackStateCompat.STATE_STOPPED
+                || state.getState() == PlaybackStateCompat.STATE_NONE;
+        if (isNotPlaying) {
             mService.stopForeground(true);
             try {
                 mService.unregisterReceiver(this);
@@ -164,7 +166,8 @@ public class MediaNotificationManager extends BroadcastReceiver {
             return;
         }
         boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-        NotificationCompat.Builder notificationBuilder = new NotificationCompat.Builder(mService);
+        NotificationCompat.Builder notificationBuilder =
+                new NotificationCompat.Builder(mService);
         MediaDescriptionCompat description = metadata.getDescription();
 
         notificationBuilder
@@ -200,7 +203,8 @@ public class MediaNotificationManager extends BroadcastReceiver {
         Notification notification = notificationBuilder.build();
 
         if (isPlaying && !mStarted) {
-            mService.startService(new Intent(mService.getApplicationContext(), MusicService.class));
+            mService.startService(
+                    new Intent(mService.getApplicationContext(), MusicService.class));
             mService.startForeground(NOTIFICATION_ID, notification);
             mStarted = true;
         } else {
