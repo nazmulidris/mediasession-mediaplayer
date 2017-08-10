@@ -45,6 +45,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     private Runnable mSeekbarPositionUpdateTask;
     private MediaMetadataCompat mCurrentMedia;
     private int mState;
+    private boolean mCurrentMediaPlayedToCompletion;
 
     public MediaPlayerHolder(Context context, PlaybackInfoListener listener) {
         mContext = context.getApplicationContext();
@@ -87,6 +88,12 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     @Override
     public void loadAndPlayMedia(int resourceId) {
         boolean mediaChanged = (resourceId != mResourceId);
+        if (mCurrentMediaPlayedToCompletion) {
+            // Last audio file was played to completion, the resourceId hasn't changed, but the
+            // player was released, so force a reload of the media file for playback.
+            mediaChanged = true;
+            mCurrentMediaPlayedToCompletion = false;
+        }
         if (!mediaChanged) {
             if (isPlaying()) {
                 return;
@@ -177,10 +184,12 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
         updatePlaybackState(PlaybackInfoListener.State.STOPPED);
     }
 
+    // This is the main reducer for the player state machine.
     private void updatePlaybackState(@PlaybackInfoListener.State int newPlayerState) {
         switch (newPlayerState) {
             case PlaybackInfoListener.State.STOPPED:
                 mState = PlaybackStateCompat.STATE_STOPPED;
+                mCurrentMediaPlayedToCompletion = true;
                 break;
             case PlaybackInfoListener.State.INVALID:
                 mState = PlaybackStateCompat.STATE_ERROR;

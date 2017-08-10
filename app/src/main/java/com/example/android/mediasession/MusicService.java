@@ -59,6 +59,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
     @Override
     public void onDestroy() {
+        mMediaNotificationManager.onDestroy();
         mPlayback.stop();
         mSession.release();
         Log.d(TAG, "onDestroy: MediaPlayerHolder stopped, and MediaSession released");

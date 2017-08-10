@@ -37,16 +37,6 @@ class MusicLibrary {
 
     static {
         createMediaMetadataCompat(
-                "test_snippet",
-                "Test Snippet",
-                "The 126ers",
-                "Youtube Audio Library Rock 2",
-                "Rock",
-                9,
-                R.raw.trimmed,
-                R.drawable.album_youtube_audio_library_rock_2,
-                "album_youtube_audio_library_rock_2");
-        createMediaMetadataCompat(
                 "Jazz_In_Paris",
                 "Jazz in Paris",
                 "Media Right Productions",
@@ -64,6 +54,16 @@ class MusicLibrary {
                 "Rock",
                 160,
                 R.raw.the_coldest_shoulder,
+                R.drawable.album_youtube_audio_library_rock_2,
+                "album_youtube_audio_library_rock_2");
+        createMediaMetadataCompat(
+                "test_snippet",
+                "Test Snippet",
+                "The 126ers",
+                "Youtube Audio Library Rock 2",
+                "Rock",
+                9,
+                R.raw.trimmed,
                 R.drawable.album_youtube_audio_library_rock_2,
                 "album_youtube_audio_library_rock_2");
     }

@@ -130,6 +130,17 @@ public class MediaNotificationManager extends BroadcastReceiver {
         // Cancel all notifications to handle the case where the Service was killed and
         // restarted by the system.
         mNotificationManager.cancelAll();
+
+        Log.d(TAG, "registered broadcast receiver");
+    }
+
+    public void onDestroy() {
+        try {
+            mService.unregisterReceiver(this);
+        } catch (IllegalArgumentException ex) {
+            // Ignore receiver not registered.
+        }
+        Log.d(TAG, "onDestroy: unregistered broadcast receiver");
     }
 
     @Override
@@ -151,34 +162,74 @@ public class MediaNotificationManager extends BroadcastReceiver {
         }
     }
 
-    public void update(
-            MediaMetadataCompat metadata,
-            @NonNull PlaybackStateCompat state,
-            MediaSessionCompat.Token token) {
-        boolean isNotPlaying =
-                state.getState() == PlaybackStateCompat.STATE_STOPPED
-                || state.getState() == PlaybackStateCompat.STATE_NONE;
-        if (isNotPlaying) {
-            mService.stopForeground(true);
-            try {
-                mService.unregisterReceiver(this);
-            } catch (IllegalArgumentException ex) {
-                // Ignore receiver not registered.
-            }
-            mService.stopSelf();
-            Log.d(TAG, "update: stopForeground(), stopSelf()");
-            return;
+    public void update(MediaMetadataCompat metadata,
+                       @NonNull PlaybackStateCompat state,
+                       MediaSessionCompat.Token token) {
+        if (state.getState() == PlaybackStateCompat.STATE_STOPPED
+            || state.getState() == PlaybackStateCompat.STATE_NONE) {
+            handlePlayerStoppedState();
+        } else if (metadata == null) {
+            // Do nothing.
+        } else {
+            handleOtherPlayerStates(metadata, state, token);
         }
-        if (metadata == null) {
-            return;
-        }
+    }
+
+    private void handlePlayerStoppedState() {
+        mService.stopForeground(true);
+        mService.stopSelf();
+        Log.d(TAG, "update: stopForeground(), stopSelf()");
+    }
+
+    private void handleOtherPlayerStates(MediaMetadataCompat metadata,
+                                         @NonNull PlaybackStateCompat state,
+                                         MediaSessionCompat.Token token) {
         boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
+
         createChannel();
-        NotificationCompat.Builder notificationBuilder =
-                new NotificationCompat.Builder(mService, CHANNEL_ID);
+
         MediaDescriptionCompat description = metadata.getDescription();
 
-        notificationBuilder
+        NotificationCompat.Builder builder =
+                buildNotification(state, token, isPlaying, description);
+
+        // If skip to next action is enabled.
+        if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS) != 0) {
+            builder.addAction(mPrevAction);
+        }
+
+        builder.addAction(isPlaying ? mPauseAction : mPlayAction);
+
+        // If skip to prev action is enabled.
+        if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_NEXT) != 0) {
+            builder.addAction(mNextAction);
+        }
+
+        Notification notification = builder.build();
+
+        if (isPlaying && !mStarted) {
+            // Show notification for the first time.
+            Intent intent = new Intent(mService.getApplicationContext(), MusicService.class);
+            ContextCompat.startForegroundService(mService, intent);
+            mService.startForeground(NOTIFICATION_ID, notification);
+            mStarted = true;
+        } else {
+            // Paused.
+            if (!isPlaying) {
+                mService.stopForeground(false);
+                mStarted = false;
+            }
+            mNotificationManager.notify(NOTIFICATION_ID, notification);
+        }
+    }
+
+    private NotificationCompat.Builder buildNotification(@NonNull PlaybackStateCompat state,
+                                                         MediaSessionCompat.Token token,
+                                                         boolean isPlaying,
+                                                         MediaDescriptionCompat description) {
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(mService, CHANNEL_ID);
+        builder
                 .setStyle(
                         new MediaStyle()
                                 .setMediaSession(token)
@@ -197,33 +248,7 @@ public class MediaNotificationManager extends BroadcastReceiver {
                 .setUsesChronometer(isPlaying)
                 .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
                         mService, PlaybackStateCompat.ACTION_STOP));
-
-        // If skip to next action is enabled.
-        if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS) != 0) {
-            notificationBuilder.addAction(mPrevAction);
-        }
-
-        notificationBuilder.addAction(isPlaying ? mPauseAction : mPlayAction);
-
-        // If skip to prev action is enabled.
-        if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_NEXT) != 0) {
-            notificationBuilder.addAction(mNextAction);
-        }
-
-        Notification notification = notificationBuilder.build();
-
-        if (isPlaying && !mStarted) {
-            Intent intent = new Intent(mService.getApplicationContext(), MusicService.class);
-            ContextCompat.startForegroundService(mService, intent);
-            mService.startForeground(NOTIFICATION_ID, notification);
-            mStarted = true;
-        } else {
-            if (!isPlaying) {
-                mService.stopForeground(false);
-                mStarted = false;
-            }
-            mNotificationManager.notify(NOTIFICATION_ID, notification);
-        }
+        return builder;
     }
 
     private void createChannel() {
@@ -254,4 +279,5 @@ public class MediaNotificationManager extends BroadcastReceiver {
         return PendingIntent.getActivity(
                 mService, REQUEST_CODE, openUI, PendingIntent.FLAG_CANCEL_CURRENT);
     }
+
 }

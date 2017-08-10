@@ -18,8 +18,9 @@
 
 <resources>
     <string name="app_name">A MediaSession and MediaPlayer Sample</string>
+    <string name="label_stop">Stop</string>
     <string name="label_pause">Pause</string>
     <string name="label_play">Play</string>
-    <string name="label_previous">Previous</string>
+    <string name="label_previous">Prev</string>
     <string name="label_next">Next</string>
 </resources>

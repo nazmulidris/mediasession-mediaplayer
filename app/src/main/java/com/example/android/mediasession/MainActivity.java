@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private Button mButtonPause;
     private Button mButtonPrevious;
     private Button mButtonNext;
+    private Button mButtonStop;
     private SeekBar mSeekbarAudio;
     private ScrollView mScrollContainer;
     private MediaBrowserCompat mMediaBrowser;
@@ -75,6 +76,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void initializeUI() {
         mTextDebug = (TextView) findViewById(R.id.text_debug);
+        mButtonStop = (Button) findViewById(R.id.button_stop);
         mButtonPlay = (Button) findViewById(R.id.button_play);
         mButtonPause = (Button) findViewById(R.id.button_pause);
         mButtonPrevious = (Button) findViewById(R.id.button_previous);
@@ -91,6 +93,18 @@ public class MainActivity extends AppCompatActivity {
                             MediaControllerCompat.getMediaController(MainActivity.this)
                                     .getTransportControls()
                                     .pause();
+                        }
+                    }
+                });
+        mButtonStop.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        final boolean canPause = mCurrentState == PlaybackStateCompat.STATE_PLAYING;
+                        if (canPause) {
+                            MediaControllerCompat.getMediaController(MainActivity.this)
+                                    .getTransportControls()
+                                    .stop();
                         }
                     }
                 });
