@@ -18,7 +18,9 @@
 
 package com.example.android.mediasession;
 
+import android.content.Intent;
 import android.os.Bundle;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaBrowserServiceCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -37,6 +39,7 @@ public class MusicService extends MediaBrowserServiceCompat {
     private MediaNotificationManager mMediaNotificationManager;
     public MediaSessionCallback mCallback;
     protected MediaPlayerHolderListener mMediaPlayerHolderListener;
+    private boolean mServiceInStartedState;
 
     @Override
     public void onCreate() {
@@ -76,48 +79,18 @@ public class MusicService extends MediaBrowserServiceCompat {
         result.sendResult(MusicLibrary.getMediaItems());
     }
 
-    public class MediaPlayerHolderListener implements PlaybackInfoListener {
-
-        @Override
-        public void onLogUpdated(String formattedMessage) {
-            Log.d(TAG, String.format("log: %s", formattedMessage));
-        }
-
-        @Override
-        public void onDurationChanged(int duration) {
-        }
-
-        @Override
-        public void onPositionChanged(int position) {
-        }
-
-        @Override
-        public void onStateChanged(@State int state) {
-        }
-
-        @Override
-        public void onPlaybackCompleted() {
-        }
-
-        @Override
-        public void onPlaybackStatusChanged(PlaybackStateCompat state) {
-            // Report the state to the MediaSession, and update the notification.
-            mSession.setPlaybackState(state);
-            // This might shutdown the service, if it is no longer needed.
-            mMediaNotificationManager.update(
-                    mPlayback.getCurrentMedia(), state, getSessionToken());
-        }
-    }
-
+    // MediaSession Callback: Transport Controls -> MediaPlayerHolder
     public class MediaSessionCallback extends MediaSessionCompat.Callback {
 
         @Override
         public void onPlayFromMediaId(String mediaId, Bundle extras) {
+
             mSession.setActive(true);
-            MediaMetadataCompat metadata =
-                    MusicLibrary.getMetadata(MusicService.this, mediaId);
+            MediaMetadataCompat metadata = MusicLibrary.getMetadata(MusicService.this, mediaId);
             mSession.setMetadata(metadata);
+
             mPlayback.loadAndPlayMedia(metadata);
+
             Log.d(TAG, "onPlayFromMediaId: MediaSession active");
         }
 
@@ -152,4 +125,42 @@ public class MusicService extends MediaBrowserServiceCompat {
 
     }
 
+    // MediaPlayerHolder Callback: MediaPlayerHolder state -> MusicService.
+    public class MediaPlayerHolderListener extends PlaybackInfoListener {
+
+        @Override
+        public void onStateChanged(PlaybackStateCompat state) {
+            // Report the state to the MediaSession.
+            mSession.setPlaybackState(state);
+
+            // Manage the started state of this service.
+            switch (state.getState()) {
+                case PlaybackStateCompat.STATE_PLAYING:
+                    if (!mServiceInStartedState) {
+                        ContextCompat.startForegroundService(
+                                MusicService.this,
+                                new Intent(MusicService.this, MusicService.class));
+                        mServiceInStartedState = true;
+                    }
+                    break;
+                case PlaybackStateCompat.STATE_PAUSED:
+                    stopForeground(false);
+                    break;
+                case PlaybackStateCompat.STATE_STOPPED:
+                    stopSelf();
+                    mServiceInStartedState = false;
+            }
+
+            // Update the notification.
+            mMediaNotificationManager.update(
+                    mPlayback.getCurrentMedia(), state, getSessionToken());
+
+        }
+
+        @Override
+        public void onLogUpdated(String formattedMessage) {
+            Log.d(TAG, String.format("log: %s", formattedMessage));
+        }
+
+    }
 }

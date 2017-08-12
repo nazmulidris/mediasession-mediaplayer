@@ -86,6 +86,11 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     }
 
     @Override
+    public int getCurrentState() {
+        return mState;
+    }
+
+    @Override
     public void loadAndPlayMedia(int resourceId) {
         boolean mediaChanged = (resourceId != mResourceId);
         if (mCurrentMediaPlayedToCompletion) {
@@ -135,7 +140,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     public void stop() {
         // Regardless of whether or not the MediaPlayer has been created / started, the state must
         // be updated, so that MediaNotificationManager can take down the notification.
-        updatePlaybackState(PlaybackInfoListener.State.STOPPED);
+        mainReducer(PlaybackStateCompat.STATE_STOPPED);
         release();
         logToUI("stop() and updatePlaybackState(STOPPED)");
     }
@@ -162,7 +167,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
             logToUI(String.format("playbackStart() %s",
                                   mContext.getResources().getResourceEntryName(mResourceId)));
             mMediaPlayer.start();
-            updatePlaybackState(PlaybackInfoListener.State.PLAYING);
+            mainReducer(PlaybackStateCompat.STATE_PLAYING);
             startUpdatingCallbackWithPosition();
         }
     }
@@ -171,7 +176,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     public void pause() {
         if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
-            updatePlaybackState(PlaybackInfoListener.State.PAUSED);
+            mainReducer(PlaybackStateCompat.STATE_PAUSED);
             logToUI("playbackPause()");
         }
     }
@@ -181,27 +186,15 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
         stopUpdatingCallbackWithPosition(true);
         logToUI("MediaPlayer playback completed");
         mPlaybackInfoListener.onPlaybackCompleted();
-        updatePlaybackState(PlaybackInfoListener.State.STOPPED);
+        mainReducer(PlaybackStateCompat.STATE_STOPPED);
     }
 
     // This is the main reducer for the player state machine.
-    private void updatePlaybackState(@PlaybackInfoListener.State int newPlayerState) {
-        switch (newPlayerState) {
-            case PlaybackInfoListener.State.STOPPED:
-                mState = PlaybackStateCompat.STATE_STOPPED;
-                mCurrentMediaPlayedToCompletion = true;
-                break;
-            case PlaybackInfoListener.State.INVALID:
-                mState = PlaybackStateCompat.STATE_ERROR;
-                break;
-            case PlaybackInfoListener.State.PAUSED:
-                mState = PlaybackStateCompat.STATE_PAUSED;
-                break;
-            case PlaybackInfoListener.State.PLAYING:
-                mState = PlaybackStateCompat.STATE_PLAYING;
-                break;
+    private void mainReducer(@PlaybackStateCompat.State int newPlayerState) {
+        mState = newPlayerState;
+        if (mState == PlaybackStateCompat.STATE_STOPPED) {
+            mCurrentMediaPlayedToCompletion = true;
         }
-        mPlaybackInfoListener.onStateChanged(newPlayerState);
         PlaybackStateCompat.Builder stateBuilder =
                 new PlaybackStateCompat.Builder().setActions(getAvailableActions());
         stateBuilder.setState(
@@ -209,7 +202,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
                 mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
                 1.0f,
                 SystemClock.elapsedRealtime());
-        mPlaybackInfoListener.onPlaybackStatusChanged(stateBuilder.build());
+        mPlaybackInfoListener.onStateChanged(stateBuilder.build());
     }
 
     @PlaybackStateCompat.Actions

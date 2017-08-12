@@ -18,34 +18,40 @@
 
 package com.example.android.mediasession;
 
-import android.support.annotation.IntDef;
 import android.support.v4.media.session.PlaybackStateCompat;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
+public abstract class PlaybackInfoListener {
 
-public interface PlaybackInfoListener {
-
-    @IntDef({State.INVALID, State.PLAYING, State.PAUSED, State.STOPPED})
-    @Retention(RetentionPolicy.SOURCE)
-    @interface State {
-
-        int INVALID = -1;
-        int PLAYING = 0;
-        int PAUSED = 1;
-        int STOPPED = 2;
+    public static StringBuffer stateToString(@PlaybackStateCompat.State int state) {
+        StringBuffer stateString = new StringBuffer();
+        switch (state) {
+            case PlaybackStateCompat.STATE_PLAYING:
+                stateString.append("PLAYING");
+                break;
+            case PlaybackStateCompat.STATE_STOPPED:
+                stateString.append("STOPPED");
+                break;
+            case PlaybackStateCompat.STATE_PAUSED:
+                stateString.append("PAUSED");
+                break;
+            case PlaybackStateCompat.STATE_ERROR:
+                stateString.append("ERROR");
+                break;
+        }
+        return stateString;
     }
 
-    void onLogUpdated(String formattedMessage);
+    abstract void onLogUpdated(String formattedMessage);
 
-    void onDurationChanged(int duration);
+    void onDurationChanged(int duration) {
+    }
 
-    void onPositionChanged(int position);
+    void onPositionChanged(int position) {
+    }
 
-    void onStateChanged(@State int state);
+    void onPlaybackCompleted() {
+    }
 
-    void onPlaybackCompleted();
-
-    void onPlaybackStatusChanged(PlaybackStateCompat state);
+    abstract void onStateChanged(PlaybackStateCompat state);
 
 }

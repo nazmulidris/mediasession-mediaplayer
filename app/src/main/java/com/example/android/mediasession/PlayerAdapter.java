@@ -19,6 +19,7 @@
 package com.example.android.mediasession;
 
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.PlaybackStateCompat;
 
 public interface PlayerAdapter {
 
@@ -27,6 +28,9 @@ public interface PlayerAdapter {
     MediaMetadataCompat getCurrentMedia();
 
     String getCurrentMediaId();
+
+    @PlaybackStateCompat.State
+    int getCurrentState();
 
     void loadAndPlayMedia(int resourceId);
 
