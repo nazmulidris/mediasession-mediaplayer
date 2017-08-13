@@ -202,7 +202,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
                 mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
                 1.0f,
                 SystemClock.elapsedRealtime());
-        mPlaybackInfoListener.onStateChanged(stateBuilder.build());
+        mPlaybackInfoListener.onPlaybackStateChange(stateBuilder.build());
     }
 
     @PlaybackStateCompat.Actions

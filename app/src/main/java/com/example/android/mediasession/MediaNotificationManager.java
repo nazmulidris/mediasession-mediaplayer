@@ -29,7 +29,6 @@ import android.content.IntentFilter;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
-import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.app.NotificationCompat.MediaStyle;
@@ -45,8 +44,9 @@ import android.util.Log;
  */
 public class MediaNotificationManager extends BroadcastReceiver {
 
+    public static final int NOTIFICATION_ID = 412;
+
     private static final String TAG = "MS_NotificationManager";
-    private static final int NOTIFICATION_ID = 412;
     private static final int REQUEST_CODE = 100;
     private static final String CHANNEL_ID = "com.example.android.musicplayer.channel";
 
@@ -57,14 +57,10 @@ public class MediaNotificationManager extends BroadcastReceiver {
 
     private final MusicService mService;
 
-    private final NotificationManager mNotificationManager;
-
     private final NotificationCompat.Action mPlayAction;
     private final NotificationCompat.Action mPauseAction;
     private final NotificationCompat.Action mNextAction;
     private final NotificationCompat.Action mPrevAction;
-
-    private boolean mStarted;
 
     public MediaNotificationManager(MusicService service) {
         mService = service;
@@ -124,12 +120,13 @@ public class MediaNotificationManager extends BroadcastReceiver {
 
         mService.registerReceiver(this, filter);
 
-        mNotificationManager =
+        NotificationManager
+                notificationManager =
                 (NotificationManager) mService.getSystemService(Context.NOTIFICATION_SERVICE);
 
         // Cancel all notifications to handle the case where the Service was killed and
         // restarted by the system.
-        mNotificationManager.cancelAll();
+        notificationManager.cancelAll();
 
         Log.d(TAG, "registered broadcast receiver");
     }
@@ -162,28 +159,22 @@ public class MediaNotificationManager extends BroadcastReceiver {
         }
     }
 
-    public void update(MediaMetadataCompat metadata,
-                       @NonNull PlaybackStateCompat state,
-                       MediaSessionCompat.Token token) {
-        if (state.getState() == PlaybackStateCompat.STATE_STOPPED
-            || state.getState() == PlaybackStateCompat.STATE_NONE) {
-            handlePlayerStoppedState();
-        } else if (metadata == null) {
-            // Do nothing.
-        } else {
-            handleOtherPlayerStates(metadata, state, token);
-        }
+    public Notification show(MediaMetadataCompat metadata,
+                             @NonNull PlaybackStateCompat state,
+                             MediaSessionCompat.Token token) {
+        return handleOtherPlayerStates(metadata, state, token, true);
     }
 
-    private void handlePlayerStoppedState() {
-        mService.stopForeground(true);
-        mService.stopSelf();
-        Log.d(TAG, "update: stopForeground(), stopSelf()");
+    public Notification update(MediaMetadataCompat metadata,
+                               @NonNull PlaybackStateCompat state,
+                               MediaSessionCompat.Token token) {
+        return handleOtherPlayerStates(metadata, state, token, false);
     }
 
-    private void handleOtherPlayerStates(MediaMetadataCompat metadata,
-                                         @NonNull PlaybackStateCompat state,
-                                         MediaSessionCompat.Token token) {
+    private Notification handleOtherPlayerStates(MediaMetadataCompat metadata,
+                                                 @NonNull PlaybackStateCompat state,
+                                                 MediaSessionCompat.Token token,
+                                                 boolean isFirstTime) {
         boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
 
         createChannel();
@@ -207,20 +198,7 @@ public class MediaNotificationManager extends BroadcastReceiver {
 
         Notification notification = builder.build();
 
-        if (isPlaying && !mStarted) {
-            // Show notification for the first time.
-            Intent intent = new Intent(mService.getApplicationContext(), MusicService.class);
-            ContextCompat.startForegroundService(mService, intent);
-            mService.startForeground(NOTIFICATION_ID, notification);
-            mStarted = true;
-        } else {
-            // Paused.
-            if (!isPlaying) {
-                mService.stopForeground(false);
-                mStarted = false;
-            }
-            mNotificationManager.notify(NOTIFICATION_ID, notification);
-        }
+        return notification;
     }
 
     private NotificationCompat.Builder buildNotification(@NonNull PlaybackStateCompat state,

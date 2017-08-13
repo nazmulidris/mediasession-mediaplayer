@@ -18,6 +18,9 @@
 
 package com.example.android.mediasession;
 
+import android.app.Notification;
+import android.app.NotificationManager;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -38,7 +41,6 @@ public class MusicService extends MediaBrowserServiceCompat {
     private MediaPlayerHolder mPlayback;
     private MediaNotificationManager mMediaNotificationManager;
     public MediaSessionCallback mCallback;
-    protected MediaPlayerHolderListener mMediaPlayerHolderListener;
     private boolean mServiceInStartedState;
 
     @Override
@@ -56,8 +58,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         mMediaNotificationManager = new MediaNotificationManager(this);
 
-        mMediaPlayerHolderListener = new MediaPlayerHolderListener();
-        mPlayback = new MediaPlayerHolder(this, mMediaPlayerHolderListener);
+        mPlayback = new MediaPlayerHolder(this, new MediaPlayerListener());
     }
 
     @Override
@@ -126,41 +127,65 @@ public class MusicService extends MediaBrowserServiceCompat {
     }
 
     // MediaPlayerHolder Callback: MediaPlayerHolder state -> MusicService.
-    public class MediaPlayerHolderListener extends PlaybackInfoListener {
+    public class MediaPlayerListener extends PlaybackInfoListener {
 
         @Override
-        public void onStateChanged(PlaybackStateCompat state) {
+        public void onPlaybackStateChange(PlaybackStateCompat state) {
             // Report the state to the MediaSession.
             mSession.setPlaybackState(state);
 
             // Manage the started state of this service.
             switch (state.getState()) {
                 case PlaybackStateCompat.STATE_PLAYING:
-                    if (!mServiceInStartedState) {
-                        ContextCompat.startForegroundService(
-                                MusicService.this,
-                                new Intent(MusicService.this, MusicService.class));
-                        mServiceInStartedState = true;
-                    }
+                    moveServiceToStartedState(state);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
-                    stopForeground(false);
+                    updateNotificationForPause(state);
                     break;
                 case PlaybackStateCompat.STATE_STOPPED:
-                    stopSelf();
-                    mServiceInStartedState = false;
+                    moveServiceOutOfStartedState();
+                    break;
             }
+        }
 
-            // Update the notification.
-            mMediaNotificationManager.update(
-                    mPlayback.getCurrentMedia(), state, getSessionToken());
+        private void moveServiceToStartedState(PlaybackStateCompat state) {
+            if (!mServiceInStartedState) {
+                ContextCompat.startForegroundService(
+                        MusicService.this,
+                        new Intent(MusicService.this, MusicService.class));
+                mServiceInStartedState = true;
+                Notification notification =
+                        mMediaNotificationManager.show(
+                                mPlayback.getCurrentMedia(), state, getSessionToken());
+                startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
+                Log.d(TAG, "onStateChanged: startForegroundService(), startForeground()");
+            }
+        }
 
+        private void updateNotificationForPause(PlaybackStateCompat state) {
+            stopForeground(false);
+            Notification notification =
+                    mMediaNotificationManager.update(
+                            mPlayback.getCurrentMedia(), state, getSessionToken());
+            NotificationManager
+                    notificationManager =
+                    (NotificationManager) MusicService.this
+                            .getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager.notify(MediaNotificationManager.NOTIFICATION_ID,
+                                       notification);
+            Log.d(TAG, "onStateChanged: stopForeground(false)");
+        }
+
+        private void moveServiceOutOfStartedState() {
+            stopForeground(true);
+            stopSelf();
+            mServiceInStartedState = false;
+            Log.d(TAG, "onStateChanged: STOPPED, 1. stopForeground(true), stopSelf()");
         }
 
         @Override
         public void onLogUpdated(String formattedMessage) {
-            Log.d(TAG, String.format("log: %s", formattedMessage));
+            Log.d(TAG, String.format("MPH: %s", formattedMessage));
         }
-
     }
 }

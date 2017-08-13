@@ -52,6 +52,6 @@ public abstract class PlaybackInfoListener {
     void onPlaybackCompleted() {
     }
 
-    abstract void onStateChanged(PlaybackStateCompat state);
+    abstract void onPlaybackStateChange(PlaybackStateCompat state);
 
 }
