@@ -129,6 +129,12 @@ public class MusicService extends MediaBrowserServiceCompat {
     // MediaPlayerHolder Callback: MediaPlayerHolder state -> MusicService.
     public class MediaPlayerListener extends PlaybackInfoListener {
 
+        private final ServiceManager mServiceManager;
+
+        MediaPlayerListener() {
+            mServiceManager = new ServiceManager();
+        }
+
         @Override
         public void onPlaybackStateChange(PlaybackStateCompat state) {
             // Report the state to the MediaSession.
@@ -137,55 +143,64 @@ public class MusicService extends MediaBrowserServiceCompat {
             // Manage the started state of this service.
             switch (state.getState()) {
                 case PlaybackStateCompat.STATE_PLAYING:
-                    moveServiceToStartedState(state);
+                    mServiceManager.moveServiceToStartedState(state);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
-                    updateNotificationForPause(state);
+                    mServiceManager.updateNotificationForPause(state);
                     break;
                 case PlaybackStateCompat.STATE_STOPPED:
-                    moveServiceOutOfStartedState();
+                    mServiceManager.moveServiceOutOfStartedState();
                     break;
             }
-        }
-
-        private void moveServiceToStartedState(PlaybackStateCompat state) {
-            if (!mServiceInStartedState) {
-                ContextCompat.startForegroundService(
-                        MusicService.this,
-                        new Intent(MusicService.this, MusicService.class));
-                mServiceInStartedState = true;
-                Notification notification =
-                        mMediaNotificationManager.show(
-                                mPlayback.getCurrentMedia(), state, getSessionToken());
-                startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
-                Log.d(TAG, "onStateChanged: startForegroundService(), startForeground()");
-            }
-        }
-
-        private void updateNotificationForPause(PlaybackStateCompat state) {
-            stopForeground(false);
-            Notification notification =
-                    mMediaNotificationManager.update(
-                            mPlayback.getCurrentMedia(), state, getSessionToken());
-            NotificationManager
-                    notificationManager =
-                    (NotificationManager) MusicService.this
-                            .getSystemService(Context.NOTIFICATION_SERVICE);
-            notificationManager.notify(MediaNotificationManager.NOTIFICATION_ID,
-                                       notification);
-            Log.d(TAG, "onStateChanged: stopForeground(false)");
-        }
-
-        private void moveServiceOutOfStartedState() {
-            stopForeground(true);
-            stopSelf();
-            mServiceInStartedState = false;
-            Log.d(TAG, "onStateChanged: STOPPED, 1. stopForeground(true), stopSelf()");
         }
 
         @Override
         public void onLogUpdated(String formattedMessage) {
             Log.d(TAG, String.format("MPH: %s", formattedMessage));
         }
+
+        class ServiceManager {
+
+            private void moveServiceToStartedState(PlaybackStateCompat state) {
+                Notification notification =
+                        mMediaNotificationManager.createNotification(
+                                mPlayback.getCurrentMedia(), state, getSessionToken());
+
+                if (!mServiceInStartedState) {
+                    ContextCompat.startForegroundService(
+                            MusicService.this,
+                            new Intent(MusicService.this, MusicService.class));
+                    mServiceInStartedState = true;
+                    Log.d(TAG, "onStateChanged: startForegroundService()");
+                }
+
+                startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
+                Log.d(TAG, "onStateChanged: startForeground()");
+            }
+
+            private void updateNotificationForPause(PlaybackStateCompat state) {
+                stopForeground(false);
+                Notification notification =
+                        mMediaNotificationManager.createNotification(
+                                mPlayback.getCurrentMedia(), state, getSessionToken());
+                getNotificationManager()
+                        .notify(MediaNotificationManager.NOTIFICATION_ID, notification);
+                Log.d(TAG, "onStateChanged: stopForeground(false)");
+            }
+
+            private void moveServiceOutOfStartedState() {
+                stopForeground(true);
+                stopSelf();
+                mServiceInStartedState = false;
+                Log.d(TAG, "onStateChanged: STOPPED, 1. stopForeground(true), stopSelf()");
+            }
+
+            private NotificationManager getNotificationManager() {
+                return (NotificationManager) MusicService.this
+                        .getSystemService(Context.NOTIFICATION_SERVICE);
+            }
+        }
+
     }
+
 }
