@@ -1,19 +1,17 @@
 /*
+ * Copyright 2017 Nazmul Idris. All rights reserved.
  *
- *  * Copyright 2017 Nazmul Idris. All rights reserved.
- *  *
- *  * Licensed under the Apache License, Version 2.0 (the "License");
- *  * you may not use this file except in compliance with the License.
- *  * You may obtain a copy of the License at
- *  *
- *  *     http://www.apache.org/licenses/LICENSE-2.0
- *  *
- *  * Unless required by applicable law or agreed to in writing, software
- *  * distributed under the License is distributed on an "AS IS" BASIS,
- *  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  * See the License for the specific language governing permissions and
- *  * limitations under the License.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
  *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 package com.example.android.mediasession;
@@ -149,7 +147,7 @@ public class MusicService extends MediaBrowserServiceCompat {
                     mServiceManager.updateNotificationForPause(state);
                     break;
                 case PlaybackStateCompat.STATE_STOPPED:
-                    mServiceManager.moveServiceOutOfStartedState();
+                    mServiceManager.moveServiceOutOfStartedState(state);
                     break;
             }
         }
@@ -171,11 +169,11 @@ public class MusicService extends MediaBrowserServiceCompat {
                             MusicService.this,
                             new Intent(MusicService.this, MusicService.class));
                     mServiceInStartedState = true;
-                    Log.d(TAG, "onStateChanged: startForegroundService()");
+                    generateLog(state, "startForegroundService(true)");
                 }
 
                 startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
-                Log.d(TAG, "onStateChanged: startForeground()");
+                generateLog(state, "startForeground()");
             }
 
             private void updateNotificationForPause(PlaybackStateCompat state) {
@@ -185,14 +183,23 @@ public class MusicService extends MediaBrowserServiceCompat {
                                 mPlayback.getCurrentMedia(), state, getSessionToken());
                 getNotificationManager()
                         .notify(MediaNotificationManager.NOTIFICATION_ID, notification);
-                Log.d(TAG, "onStateChanged: stopForeground(false)");
+                generateLog(state, "stopForeground(false)");
             }
 
-            private void moveServiceOutOfStartedState() {
+            private void moveServiceOutOfStartedState(PlaybackStateCompat state) {
                 stopForeground(true);
                 stopSelf();
                 mServiceInStartedState = false;
-                Log.d(TAG, "onStateChanged: STOPPED, 1. stopForeground(true), stopSelf()");
+                generateLog(state, "stopForeground(true), stopSelf()");
+            }
+
+            private void generateLog(PlaybackStateCompat state, String message) {
+                Log.d(TAG,
+                      String.format("onStateChanged(%s): %s",
+                                    PlaybackInfoListener.stateToString(state.getState()),
+                                    message
+                      )
+                );
             }
 
             private NotificationManager getNotificationManager() {
