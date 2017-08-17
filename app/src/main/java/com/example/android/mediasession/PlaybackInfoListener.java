@@ -35,6 +35,11 @@ public abstract class PlaybackInfoListener {
             case PlaybackStateCompat.STATE_ERROR:
                 stateString.append("ERROR");
                 break;
+            case PlaybackStateCompat.STATE_NONE:
+                stateString.append("NONE");
+                break;
+            default:
+                stateString.append("UNKNOWN");
         }
         return stateString;
     }

@@ -54,8 +54,9 @@ public class MainActivity extends AppCompatActivity {
     private final MediaBrowserSubscriptionCallback mMediaBrowserSubscriptionCallback =
             new MediaBrowserSubscriptionCallback();
 
-    private PlaybackStateCompat mCurrentPlaybackState;
+    @PlaybackStateCompat.State
     private int mCurrentState;
+    @Nullable
     private MediaMetadataCompat mCurrentMetadata;
     private List<MediaBrowserCompat.MediaItem> mMediaItemList;
 
@@ -73,59 +74,39 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initializeUI() {
-        mTextDebug = (TextView) findViewById(R.id.text_debug);
-        mButtonStop = (Button) findViewById(R.id.button_stop);
-        mButtonPlay = (Button) findViewById(R.id.button_play);
-        mButtonPause = (Button) findViewById(R.id.button_pause);
-        mButtonPrevious = (Button) findViewById(R.id.button_previous);
-        mButtonNext = (Button) findViewById(R.id.button_next);
-        mSeekbarAudio = (SeekBar) findViewById(R.id.seekbar_audio);
-        mScrollContainer = (ScrollView) findViewById(R.id.scroll_container);
+        mTextDebug = findViewById(R.id.text_debug);
+        mButtonStop = findViewById(R.id.button_stop);
+        mButtonPlay = findViewById(R.id.button_play);
+        mButtonPause = findViewById(R.id.button_pause);
+        mButtonPrevious = findViewById(R.id.button_previous);
+        mButtonNext = findViewById(R.id.button_next);
+        mSeekbarAudio = findViewById(R.id.seekbar_audio);
+        mScrollContainer = findViewById(R.id.scroll_container);
 
         mButtonPause.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        final boolean canPause = mCurrentState == PlaybackStateCompat.STATE_PLAYING;
-                        if (canPause) {
-                            MediaControllerCompat.getMediaController(MainActivity.this)
-                                    .getTransportControls()
-                                    .pause();
-                        }
+                        getTransportControls().pause();
                     }
                 });
         mButtonStop.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        final boolean canPause = mCurrentState == PlaybackStateCompat.STATE_PLAYING;
-                        if (canPause) {
-                            MediaControllerCompat.getMediaController(MainActivity.this)
-                                    .getTransportControls()
-                                    .stop();
-                        }
+                        getTransportControls().stop();
                     }
                 });
         mButtonPlay.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        boolean canPlay = mCurrentState == PlaybackStateCompat.STATE_PAUSED ||
-                                          mCurrentState == PlaybackStateCompat.STATE_STOPPED ||
-                                          mCurrentState == PlaybackStateCompat.STATE_NONE;
                         boolean isMusicLoaded = mCurrentMetadata != null;
-                        if (canPlay) {
-                            if (!isMusicLoaded) {
-                                mCurrentMetadata =
-                                        MusicLibrary.getMetadata(
-                                                MainActivity.this,
-                                                MusicLibrary.getMediaItems().get(0).getMediaId());
-                                updateMetadata(mCurrentMetadata);
-                            }
-                            MediaControllerCompat.getMediaController(MainActivity.this)
-                                    .getTransportControls()
-                                    .playFromMediaId(
-                                            mCurrentMetadata.getDescription().getMediaId(), null);
+                        if (!isMusicLoaded) {
+                            final String mediaId = MusicLibrary.getMediaItems().get(0).getMediaId();
+                            getTransportControls().playFromMediaId(mediaId, null);
+                        } else {
+                            getTransportControls().play();
                         }
                     }
                 });
@@ -133,28 +114,14 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        boolean canSkip = mCurrentState == PlaybackStateCompat.STATE_PAUSED ||
-                                          mCurrentState == PlaybackStateCompat.STATE_PLAYING ||
-                                          mCurrentState == PlaybackStateCompat.STATE_STOPPED;
-                        if (canSkip) {
-                            MediaControllerCompat.getMediaController(MainActivity.this)
-                                    .getTransportControls()
-                                    .skipToPrevious();
-                        }
+                        getTransportControls().skipToPrevious();
                     }
                 });
         mButtonNext.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        boolean canSkip = mCurrentState == PlaybackStateCompat.STATE_PAUSED ||
-                                          mCurrentState == PlaybackStateCompat.STATE_PLAYING ||
-                                          mCurrentState == PlaybackStateCompat.STATE_STOPPED;
-                        if (canSkip) {
-                            MediaControllerCompat.getMediaController(MainActivity.this)
-                                    .getTransportControls()
-                                    .skipToNext();
-                        }
+                        getTransportControls().skipToNext();
                     }
                 });
     }
@@ -180,10 +147,8 @@ public class MainActivity extends AppCompatActivity {
             mMediaBrowser.subscribe(mMediaBrowser.getRoot(), mMediaBrowserSubscriptionCallback);
             try {
                 MediaControllerCompat mediaController =
-                        new MediaControllerCompat(
-                                MainActivity.this, mMediaBrowser.getSessionToken());
-                updatePlaybackState(mediaController.getPlaybackState());
-                updateMetadata(mediaController.getMetadata());
+                        new MediaControllerCompat(MainActivity.this,
+                                                  mMediaBrowser.getSessionToken());
                 mediaController.registerCallback(mMediaControllerCallback);
                 MediaControllerCompat.setMediaController(MainActivity.this, mediaController);
             } catch (RemoteException e) {
@@ -193,8 +158,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onConnectionSuspended() {
-            MediaControllerCompat mediaController = MediaControllerCompat
-                    .getMediaController(MainActivity.this);
+            MediaControllerCompat mediaController =
+                    MediaControllerCompat.getMediaController(MainActivity.this);
             if (mediaController != null) {
                 mediaController.unregisterCallback(mMediaControllerCallback);
                 MediaControllerCompat.setMediaController(MainActivity.this, null);
@@ -233,32 +198,32 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
-            updateMetadata(metadata);
+            mCurrentMetadata = metadata;
+            updateUIOnMetadataChange();
         }
 
         @Override
-        public void onPlaybackStateChanged(PlaybackStateCompat state) {
-            updatePlaybackState(state);
+        public void onPlaybackStateChanged(@Nullable PlaybackStateCompat state) {
+            if (state == null) {
+                mCurrentState = PlaybackStateCompat.STATE_NONE;
+            } else {
+                mCurrentState = state.getState();
+            }
+            updateUIOnPlaybackStateChange();
         }
 
         @Override
         public void onSessionDestroyed() {
-            updatePlaybackState(null);
+            onPlaybackStateChanged(null);
         }
 
     }
 
     // Methods that make UI updates.
     // TODO: 8/7/17 Update the play/pause button when state changes.
-    private void updatePlaybackState(@Nullable PlaybackStateCompat state) {
-        mCurrentPlaybackState = state;
-        if (state == null) {
-            mCurrentState = PlaybackStateCompat.STATE_NONE;
-        } else {
-            mCurrentState = state.getState();
-        }
-        logToUI(String.format("updatePlaybackState(%s)",
-                              state == null ? "null" : state.getPlaybackState().toString()));
+    private void updateUIOnPlaybackStateChange() {
+        logToUI(String.format("Playback State Updated: %s",
+                              PlaybackInfoListener.stateToString(mCurrentState)));
 /*
             if (state == null
                 || state.getState() == PlaybackState.STATE_PAUSED
@@ -274,18 +239,18 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
-    private void updateMetadata(@Nullable MediaMetadataCompat metadata) {
-        mCurrentMetadata = metadata;
-        logToUI(String.format("updateMetadata(%s)",
-                              metadata == null ? "null" : metadata.getDescription().toString()));
+    private void updateUIOnMetadataChange() {
+        final String metadataString = mCurrentMetadata == null
+                                      ? "null"
+                                      : mCurrentMetadata.getDescription().toString();
+        logToUI(String.format("Metadata updated: %s", metadataString));
 /*
-            mTitle.setText(metadata == null ? "" : metadata.getDescription().getTitle());
-            mSubtitle.setText(metadata == null ? "" : metadata.getDescription().getSubtitle());
-            mAlbumArt.setImageBitmap(
-                    metadata == null
-                    ? null
-                    : MusicLibrary.getAlbumBitmap(
-                            this, metadata.getDescription().getMediaId()));
+        mTitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getTitle());
+        mSubtitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getSubtitle());
+        mAlbumArt.setImageBitmap(
+                mCurrentMetadata == null
+                ? null
+                : MusicLibrary.getAlbumBitmap(this, mCurrentMetadata.getDescription().getMediaId()));
 */
     }
 
@@ -302,6 +267,12 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
         }
+    }
+
+    // Helper methods.
+    private MediaControllerCompat.TransportControls getTransportControls() {
+        return MediaControllerCompat.getMediaController(MainActivity.this)
+                .getTransportControls();
     }
 
 }
