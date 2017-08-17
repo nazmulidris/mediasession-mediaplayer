@@ -52,9 +52,13 @@ public class MediaNotificationManager {
     private final NotificationCompat.Action mPauseAction;
     private final NotificationCompat.Action mNextAction;
     private final NotificationCompat.Action mPrevAction;
+    private final NotificationManager mNotificationManager;
 
     public MediaNotificationManager(MusicService service) {
         mService = service;
+
+        mNotificationManager =
+                (NotificationManager) mService.getSystemService(Context.NOTIFICATION_SERVICE);
 
         mPlayAction =
                 new NotificationCompat.Action(
@@ -85,30 +89,57 @@ public class MediaNotificationManager {
                                 mService,
                                 PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS));
 
-        NotificationManager
-                notificationManager =
-                (NotificationManager) mService.getSystemService(Context.NOTIFICATION_SERVICE);
-
         // Cancel all notifications to handle the case where the Service was killed and
         // restarted by the system.
-        notificationManager.cancelAll();
+        mNotificationManager.cancelAll();
+    }
+
+    public NotificationManager getNotificationManager() {
+        return mNotificationManager;
     }
 
     public void onDestroy() {
-        Log.d(TAG, "onDestroy:");
+        mNotificationManager.deleteNotificationChannel(CHANNEL_ID);
+        Log.d(TAG, "onDestroy: Existing channel deleted");
     }
 
-    public Notification createNotification(MediaMetadataCompat metadata,
-                                           @NonNull PlaybackStateCompat state,
-                                           MediaSessionCompat.Token token) {
+    public Notification getNotification(MediaMetadataCompat metadata,
+                                        @NonNull PlaybackStateCompat state,
+                                        MediaSessionCompat.Token token) {
         boolean isPlaying = state.getState() == PlaybackStateCompat.STATE_PLAYING;
-
-        createChannel();
-
         MediaDescriptionCompat description = metadata.getDescription();
-
         NotificationCompat.Builder builder =
                 buildNotification(state, token, isPlaying, description);
+        return builder.build();
+    }
+
+    private NotificationCompat.Builder buildNotification(@NonNull PlaybackStateCompat state,
+                                                         MediaSessionCompat.Token token,
+                                                         boolean isPlaying,
+                                                         MediaDescriptionCompat description) {
+        createChannel();
+        NotificationCompat.Builder builder =
+                new NotificationCompat.Builder(mService, CHANNEL_ID);
+        builder
+                .setStyle(
+                        new MediaStyle()
+                                .setMediaSession(token)
+                                .setShowActionsInCompactView(0, 1, 2))
+                .setColor(
+                        mService.getApplication().getResources().getColor(R.color.notification_bg))
+                .setSmallIcon(R.drawable.ic_stat_image_audiotrack)
+                .setContentIntent(createContentIntent())
+                .setContentTitle(description.getTitle())
+                .setContentText(description.getSubtitle())
+                .setLargeIcon(MusicLibrary.getAlbumBitmap(mService, description.getMediaId()))
+                .setOngoing(isPlaying)
+                .setWhen(isPlaying ? System.currentTimeMillis() - state.getPosition() : 0)
+                .setShowWhen(isPlaying)
+                .setUsesChronometer(isPlaying)
+                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        mService, PlaybackStateCompat.ACTION_STOP))
+                // Show controls on lock screen even when user hides sensitive content.
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
         // If skip to next action is enabled.
         if ((state.getActions() & PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS) != 0) {
@@ -122,57 +153,32 @@ public class MediaNotificationManager {
             builder.addAction(mNextAction);
         }
 
-        return builder.build();
-    }
-
-    private NotificationCompat.Builder buildNotification(@NonNull PlaybackStateCompat state,
-                                                         MediaSessionCompat.Token token,
-                                                         boolean isPlaying,
-                                                         MediaDescriptionCompat description) {
-        NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(mService, CHANNEL_ID);
-        builder
-                .setStyle(
-                        new MediaStyle()
-                                .setMediaSession(token)
-                                .setShowActionsInCompactView(0, 1, 2))
-                .setColor(
-                        mService.getApplication().getResources().getColor(R.color.notification_bg))
-                .setSmallIcon(R.drawable.ic_stat_image_audiotrack)
-                .setVisibility(Notification.VISIBILITY_PUBLIC)
-                .setContentIntent(createContentIntent())
-                .setContentTitle(description.getTitle())
-                .setContentText(description.getSubtitle())
-                .setLargeIcon(MusicLibrary.getAlbumBitmap(mService, description.getMediaId()))
-                .setOngoing(isPlaying)
-                .setWhen(isPlaying ? System.currentTimeMillis() - state.getPosition() : 0)
-                .setShowWhen(isPlaying)
-                .setUsesChronometer(isPlaying)
-                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
-                        mService, PlaybackStateCompat.ACTION_STOP));
         return builder;
     }
 
     private void createChannel() {
-        NotificationManager mNotificationManager =
-                (NotificationManager) mService.getSystemService(Context.NOTIFICATION_SERVICE);
-        // The id of the channel.
-        String id = CHANNEL_ID;
-        // The user-visible name of the channel.
-        CharSequence name = "MediaSession";
-        // The user-visible description of the channel.
-        String description = "MediaSession and MediaPlayer";
-        int importance = NotificationManager.IMPORTANCE_LOW;
-        NotificationChannel mChannel = new NotificationChannel(id, name, importance);
-        // Configure the notification channel.
-        mChannel.setDescription(description);
-        mChannel.enableLights(true);
-        // Sets the notification light color for notifications posted to this
-        // channel, if the device supports this feature.
-        mChannel.setLightColor(Color.RED);
-        mChannel.enableVibration(true);
-        mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-        mNotificationManager.createNotificationChannel(mChannel);
+        if (mNotificationManager.getNotificationChannel(CHANNEL_ID) == null) {
+            // The id of the channel.
+            String id = CHANNEL_ID;
+            // The user-visible name of the channel.
+            CharSequence name = "MediaSession";
+            // The user-visible description of the channel.
+            String description = "MediaSession and MediaPlayer";
+            int importance = NotificationManager.IMPORTANCE_LOW;
+            NotificationChannel mChannel = new NotificationChannel(id, name, importance);
+            // Configure the notification channel.
+            mChannel.setDescription(description);
+            mChannel.enableLights(true);
+            // Sets the notification light color for notifications posted to this
+            // channel, if the device supports this feature.
+            mChannel.setLightColor(Color.RED);
+            mChannel.enableVibration(true);
+            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+            mNotificationManager.createNotificationChannel(mChannel);
+            Log.d(TAG, "createChannel: New channel created");
+        } else {
+            Log.d(TAG, "createChannel: Existing channel reused");
+        }
     }
 
     private PendingIntent createContentIntent() {

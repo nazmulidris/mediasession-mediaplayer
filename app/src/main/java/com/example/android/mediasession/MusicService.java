@@ -17,8 +17,6 @@
 package com.example.android.mediasession;
 
 import android.app.Notification;
-import android.app.NotificationManager;
-import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
@@ -161,7 +159,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
             private void moveServiceToStartedState(PlaybackStateCompat state) {
                 Notification notification =
-                        mMediaNotificationManager.createNotification(
+                        mMediaNotificationManager.getNotification(
                                 mPlayback.getCurrentMedia(), state, getSessionToken());
 
                 if (!mServiceInStartedState) {
@@ -179,9 +177,9 @@ public class MusicService extends MediaBrowserServiceCompat {
             private void updateNotificationForPause(PlaybackStateCompat state) {
                 stopForeground(false);
                 Notification notification =
-                        mMediaNotificationManager.createNotification(
+                        mMediaNotificationManager.getNotification(
                                 mPlayback.getCurrentMedia(), state, getSessionToken());
-                getNotificationManager()
+                mMediaNotificationManager.getNotificationManager()
                         .notify(MediaNotificationManager.NOTIFICATION_ID, notification);
                 generateLog(state, "stopForeground(false)");
             }
@@ -202,10 +200,6 @@ public class MusicService extends MediaBrowserServiceCompat {
                 );
             }
 
-            private NotificationManager getNotificationManager() {
-                return (NotificationManager) MusicService.this
-                        .getSystemService(Context.NOTIFICATION_SERVICE);
-            }
         }
 
     }
