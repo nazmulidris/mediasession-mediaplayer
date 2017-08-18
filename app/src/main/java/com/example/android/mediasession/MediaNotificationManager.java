@@ -25,6 +25,7 @@ import android.content.Intent;
 import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.app.NotificationCompat.MediaStyle;
@@ -124,18 +125,23 @@ public class MediaNotificationManager {
                 .setStyle(
                         new MediaStyle()
                                 .setMediaSession(token)
-                                .setShowActionsInCompactView(0, 1, 2))
-                .setColor(
-                        mService.getApplication().getResources().getColor(R.color.notification_bg))
+//                                .setShowActionsInCompactView(0, 1, 2)
+                )
+                .setColor(ContextCompat.getColor(mService, R.color.notification_bg))
                 .setSmallIcon(R.drawable.ic_stat_image_audiotrack)
+                // Pending intent that is fired when user clicks on notification.
                 .setContentIntent(createContentIntent())
+                // Subtext - Usually Album name.
+                .setSubText(PlaybackInfoListener.stateToString(state))
+                // Title - Usually Song name.
                 .setContentTitle(description.getTitle())
+                // Subtitle - Usually Artist name.
                 .setContentText(description.getSubtitle())
                 .setLargeIcon(MusicLibrary.getAlbumBitmap(mService, description.getMediaId()))
-                .setOngoing(isPlaying)
-                .setWhen(isPlaying ? System.currentTimeMillis() - state.getPosition() : 0)
-                .setShowWhen(isPlaying)
-                .setUsesChronometer(isPlaying)
+//                .setOngoing(isPlaying)
+//                .setWhen(isPlaying ? System.currentTimeMillis() - state.getPosition() : 0)
+//                .setShowWhen(isPlaying)
+//                .setUsesChronometer(isPlaying)
                 .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
                         mService, PlaybackStateCompat.ACTION_STOP))
                 // Show controls on lock screen even when user hides sensitive content.

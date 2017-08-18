@@ -25,6 +25,7 @@ import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
@@ -55,10 +56,12 @@ public class MainActivity extends AppCompatActivity {
             new MediaBrowserSubscriptionCallback();
 
     @PlaybackStateCompat.State
-    private int mCurrentState;
+    private int mCurrentState = PlaybackStateCompat.STATE_NONE;
     @Nullable
     private MediaMetadataCompat mCurrentMetadata;
     private List<MediaBrowserCompat.MediaItem> mMediaItemList;
+    private boolean mClientIsConnectedToService = false;
+    private MediaControllerCompat mMediaController;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,8 +105,9 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onClick(View view) {
                         boolean isMusicLoaded = mCurrentMetadata != null;
+                        Log.d(TAG, String.format("onClick: isMusicLoaded: %s", isMusicLoaded));
                         if (!isMusicLoaded) {
-                            final String mediaId = MusicLibrary.getMediaItems().get(0).getMediaId();
+                            String mediaId = MusicLibrary.getMediaItems().get(0).getMediaId();
                             getTransportControls().playFromMediaId(mediaId, null);
                         } else {
                             getTransportControls().play();
@@ -142,30 +146,53 @@ public class MainActivity extends AppCompatActivity {
     // MediaBrowserService (MusicService).
     public class MediaBrowserConnectionCallback extends MediaBrowserCompat.ConnectionCallback {
 
+        // Happens onStart().
         @Override
         public void onConnected() {
             mMediaBrowser.subscribe(mMediaBrowser.getRoot(), mMediaBrowserSubscriptionCallback);
             try {
-                MediaControllerCompat mediaController =
-                        new MediaControllerCompat(MainActivity.this,
-                                                  mMediaBrowser.getSessionToken());
-                mediaController.registerCallback(mMediaControllerCallback);
-                MediaControllerCompat.setMediaController(MainActivity.this, mediaController);
+                mMediaController = new MediaControllerCompat(MainActivity.this,
+                                                             mMediaBrowser.getSessionToken());
+                mMediaController.registerCallback(mMediaControllerCallback);
+                mClientIsConnectedToService = true;
+                Log.d(TAG, "onConnected: ");
             } catch (RemoteException e) {
+                Log.d(TAG, String.format("onConnected: Problem: %s", e.toString()));
                 throw new RuntimeException(e);
             }
         }
 
+        // Does not happen onStop(). In fact, does not get called.
         @Override
         public void onConnectionSuspended() {
-            MediaControllerCompat mediaController =
-                    MediaControllerCompat.getMediaController(MainActivity.this);
-            if (mediaController != null) {
-                mediaController.unregisterCallback(mMediaControllerCallback);
-                MediaControllerCompat.setMediaController(MainActivity.this, null);
-            }
+            Log.d(TAG, "onConnectionSuspended: ");
+            cleanupResources();
         }
 
+        // Does not happen onStop(). In fact, does not get called.
+        @Override
+        public void onConnectionFailed() {
+            Log.d(TAG, "onConnectionFailed: ");
+            cleanupResources();
+        }
+
+        public void cleanupResources() {
+            mMediaController.unregisterCallback(mMediaControllerCallback);
+            mMediaController = null;
+            mClientIsConnectedToService = false;
+            Log.d(TAG, "cleanupResources: Releasing MediaController");
+        }
+
+        // Happens when the MusicService dies.
+        public void onServiceDestroyed() {
+            // It is possible for the MusicService to die while the UI is running, and to handle
+            // this case, mCurrentMetadata has to be set to null here. When the Play button is
+            // pressed the media will be loaded. Basically reset the state of the Activity to
+            // what it is when it is first created.
+            mCurrentMetadata = null;
+            mCurrentState = PlaybackStateCompat.STATE_NONE;
+            Log.d(TAG, "serviceIsDestroyed: MusicService has died!!!");
+        }
     }
 
     // Receives callbacks from the MediaBrowser when the MediaBrowserService has loaded new media
@@ -212,8 +239,10 @@ public class MainActivity extends AppCompatActivity {
             updateUIOnPlaybackStateChange();
         }
 
+        // This happens when the MusicService is killed.
         @Override
         public void onSessionDestroyed() {
+            mMediaBrowserConnectionCallback.onServiceDestroyed();
             onPlaybackStateChanged(null);
         }
 
@@ -271,8 +300,16 @@ public class MainActivity extends AppCompatActivity {
 
     // Helper methods.
     private MediaControllerCompat.TransportControls getTransportControls() {
-        return MediaControllerCompat.getMediaController(MainActivity.this)
-                .getTransportControls();
+        Log.d(TAG, String.format("getTransportControls: MC is null:%s, Client is connected:%s",
+                                 mMediaController == null,
+                                 mClientIsConnectedToService));
+        if (mMediaController == null) {
+            Log.d(TAG, "getTransportControls: MediaController is null!");
+            throw new IllegalStateException();
+        } else {
+            Log.d(TAG, "getTransportControls: MediaController is not null!");
+            return mMediaController.getTransportControls();
+        }
     }
 
 }

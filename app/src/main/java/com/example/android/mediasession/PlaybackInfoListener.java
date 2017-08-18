@@ -16,9 +16,18 @@
 
 package com.example.android.mediasession;
 
+import android.support.annotation.Nullable;
 import android.support.v4.media.session.PlaybackStateCompat;
 
 public abstract class PlaybackInfoListener {
+
+    public static StringBuffer stateToString(@Nullable PlaybackStateCompat state) {
+        if (state == null) {
+            return new StringBuffer("UNKNOWN");
+        } else {
+            return stateToString(state.getState());
+        }
+    }
 
     public static StringBuffer stateToString(@PlaybackStateCompat.State int state) {
         StringBuffer stateString = new StringBuffer();

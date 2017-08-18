@@ -55,6 +55,7 @@ public class MusicService extends MediaBrowserServiceCompat {
         mMediaNotificationManager = new MediaNotificationManager(this);
 
         mPlayback = new MediaPlayerHolder(this, new MediaPlayerListener());
+        Log.d(TAG, "onCreate: MusicService creating MediaSession, and MediaNotificationManager");
     }
 
     @Override
