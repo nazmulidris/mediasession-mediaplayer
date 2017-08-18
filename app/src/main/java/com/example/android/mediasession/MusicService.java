@@ -77,6 +77,10 @@ public class MusicService extends MediaBrowserServiceCompat {
         result.sendResult(MusicLibrary.getMediaItems());
     }
 
+    public MediaSessionCompat getMediaSession() {
+        return mSession;
+    }
+
     // MediaSession Callback: Transport Controls -> MediaPlayerHolder
     public class MediaSessionCallback extends MediaSessionCompat.Callback {
 
