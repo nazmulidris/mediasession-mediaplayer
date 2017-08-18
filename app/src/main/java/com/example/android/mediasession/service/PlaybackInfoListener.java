@@ -23,7 +23,7 @@ public abstract class PlaybackInfoListener {
 
     public static StringBuffer stateToString(@Nullable PlaybackStateCompat state) {
         if (state == null) {
-            return new StringBuffer("UNKNOWN");
+            return new StringBuffer("NULL");
         } else {
             return stateToString(state.getState());
         }

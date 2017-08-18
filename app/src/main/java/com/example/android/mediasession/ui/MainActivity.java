@@ -60,13 +60,18 @@ public class MainActivity extends AppCompatActivity {
     private final MediaBrowserSubscriptionCallback mMediaBrowserSubscriptionCallback =
             new MediaBrowserSubscriptionCallback();
 
-    @PlaybackStateCompat.State
-    private int mCurrentState = PlaybackStateCompat.STATE_NONE;
+    // Metadata and PlaybackState comprise the overall state of the MediaSession, and the app
+    // should use just this information to update the UI.
+    @Nullable
+    private PlaybackStateCompat mCurrentPlaybackState;
     @Nullable
     private MediaMetadataCompat mCurrentMetadata;
-    private List<MediaBrowserCompat.MediaItem> mMediaItemList;
-    private boolean mClientIsConnectedToService = false;
+
+    @Nullable
     private MediaControllerCompat mMediaController;
+    private boolean mClientIsConnectedToService = false;
+
+    private List<MediaBrowserCompat.MediaItem> mMediaItemList;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,7 +200,7 @@ public class MainActivity extends AppCompatActivity {
             // pressed the media will be loaded. Basically reset the state of the Activity to
             // what it is when it is first created.
             mCurrentMetadata = null;
-            mCurrentState = PlaybackStateCompat.STATE_NONE;
+            mCurrentPlaybackState = null;
             Log.d(TAG, "onServiceDestroyed: MusicService has died!!!");
         }
     }
@@ -236,11 +241,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onPlaybackStateChanged(@Nullable PlaybackStateCompat state) {
-            if (state == null) {
-                mCurrentState = PlaybackStateCompat.STATE_NONE;
-            } else {
-                mCurrentState = state.getState();
-            }
+            mCurrentPlaybackState = state;
             updateUIOnPlaybackStateChange();
         }
 
@@ -257,7 +258,7 @@ public class MainActivity extends AppCompatActivity {
     // TODO: 8/7/17 Update the play/pause button when state changes.
     private void updateUIOnPlaybackStateChange() {
         logToUI(String.format("Playback State Updated: %s",
-                              PlaybackInfoListener.stateToString(mCurrentState)));
+                              PlaybackInfoListener.stateToString(mCurrentPlaybackState)));
 /*
             if (state == null
                 || state.getState() == PlaybackState.STATE_PAUSED
