@@ -23,6 +23,7 @@ import android.support.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaControllerCompat;
+import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -84,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
                         mMediaBrowserConnectionCallback,
                         null);
         initializeUI();
+        resetInternalState();
     }
 
     private void initializeUI() {
@@ -199,10 +201,18 @@ public class MainActivity extends AppCompatActivity {
             // this case, mCurrentMetadata has to be set to null here. When the Play button is
             // pressed the media will be loaded. Basically reset the state of the Activity to
             // what it is when it is first created.
-            mCurrentMetadata = null;
-            mCurrentPlaybackState = null;
+            resetInternalState();
             Log.d(TAG, "onServiceDestroyed: MusicService has died!!!");
         }
+    }
+
+    /**
+     * The internal state of the app needs to revert to what it looks like when it started before
+     * any connections to the {@link MusicService} happens via the {@link MediaSessionCompat}.
+     */
+    private void resetInternalState() {
+        mCurrentMetadata = null;
+        mCurrentPlaybackState = null;
     }
 
     // Receives callbacks from the MediaBrowser when the MediaBrowserService has loaded new media
@@ -259,8 +269,10 @@ public class MainActivity extends AppCompatActivity {
     private void updateUIOnPlaybackStateChange() {
         logToUI(String.format("Playback State Updated: %s",
                               PlaybackInfoListener.stateToString(mCurrentPlaybackState)));
-        long currentPosition = mCurrentPlaybackState.getPosition();
-        logToUI(String.format("position:%d", currentPosition));
+        if (mCurrentPlaybackState != null) {
+            long currentPosition = mCurrentPlaybackState.getPosition();
+            logToUI(String.format("position:%d", currentPosition));
+        }
 /*
             if (state == null
                 || state.getState() == PlaybackState.STATE_PAUSED
@@ -281,8 +293,10 @@ public class MainActivity extends AppCompatActivity {
                                       ? "null"
                                       : mCurrentMetadata.getDescription().toString();
         logToUI(String.format("Metadata updated: %s", metadataString));
-        long duration = mCurrentMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
-        logToUI(String.format("duration:%d", duration));
+        if (mCurrentMetadata != null) {
+            long duration = mCurrentMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+            logToUI(String.format("duration:%d", duration));
+        }
 /*
         mTitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getTitle());
         mSubtitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getSubtitle());
