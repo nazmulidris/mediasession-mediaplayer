@@ -191,7 +191,7 @@ public class MainActivity extends AppCompatActivity {
             // what it is when it is first created.
             mCurrentMetadata = null;
             mCurrentState = PlaybackStateCompat.STATE_NONE;
-            Log.d(TAG, "serviceIsDestroyed: MusicService has died!!!");
+            Log.d(TAG, "onServiceDestroyed: MusicService has died!!!");
         }
     }
 
