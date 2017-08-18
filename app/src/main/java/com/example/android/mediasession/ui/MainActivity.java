@@ -259,6 +259,8 @@ public class MainActivity extends AppCompatActivity {
     private void updateUIOnPlaybackStateChange() {
         logToUI(String.format("Playback State Updated: %s",
                               PlaybackInfoListener.stateToString(mCurrentPlaybackState)));
+        long currentPosition = mCurrentPlaybackState.getPosition();
+        logToUI(String.format("position:%d", currentPosition));
 /*
             if (state == null
                 || state.getState() == PlaybackState.STATE_PAUSED
@@ -279,6 +281,8 @@ public class MainActivity extends AppCompatActivity {
                                       ? "null"
                                       : mCurrentMetadata.getDescription().toString();
         logToUI(String.format("Metadata updated: %s", metadataString));
+        long duration = mCurrentMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        logToUI(String.format("duration:%d", duration));
 /*
         mTitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getTitle());
         mSubtitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getSubtitle());
