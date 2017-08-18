@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.mediasession;
+package com.example.android.mediasession.service;
 
 import android.support.annotation.Nullable;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -53,17 +53,17 @@ public abstract class PlaybackInfoListener {
         return stateString;
     }
 
-    abstract void onLogUpdated(String formattedMessage);
+    public abstract void onLogUpdated(String formattedMessage);
 
-    void onDurationChanged(int duration) {
+    public void onDurationChanged(int duration) {
     }
 
-    void onPositionChanged(int position) {
+    public void onPositionChanged(int position) {
     }
 
-    void onPlaybackCompleted() {
+    public void onPlaybackCompleted() {
     }
 
-    abstract void onPlaybackStateChange(PlaybackStateCompat state);
+    public abstract void onPlaybackStateChange(PlaybackStateCompat state);
 
 }

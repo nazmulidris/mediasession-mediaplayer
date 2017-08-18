@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.mediasession;
+package com.example.android.mediasession.service;
 
 import android.app.Notification;
 import android.content.Intent;
@@ -27,6 +27,10 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
 
+import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
+import com.example.android.mediasession.service.notifications.MediaNotificationManager;
+import com.example.android.mediasession.service.players.MediaPlayerHolder;
+
 import java.util.List;
 
 public class MusicService extends MediaBrowserServiceCompat {
@@ -34,7 +38,7 @@ public class MusicService extends MediaBrowserServiceCompat {
     private static final String TAG = "MS_MusicService";
 
     private MediaSessionCompat mSession;
-    private MediaPlayerHolder mPlayback;
+    private PlayerAdapter mPlayback;
     private MediaNotificationManager mMediaNotificationManager;
     public MediaSessionCallback mCallback;
     private boolean mServiceInStartedState;

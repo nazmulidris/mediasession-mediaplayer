@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.mediasession;
+package com.example.android.mediasession.service.notifications;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -35,6 +35,12 @@ import android.support.v4.media.session.MediaButtonReceiver;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.util.Log;
+
+import com.example.android.mediasession.R;
+import com.example.android.mediasession.service.MusicService;
+import com.example.android.mediasession.service.PlaybackInfoListener;
+import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
+import com.example.android.mediasession.ui.MainActivity;
 
 
 /**

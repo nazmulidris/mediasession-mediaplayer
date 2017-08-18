@@ -28,7 +28,7 @@
             android:supportsRtl="true"
             android:theme="@style/AppTheme">
         <activity
-                android:name=".MainActivity"
+                android:name=".ui.MainActivity"
                 android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -38,7 +38,7 @@
         </activity>
 
         <service
-                android:name=".MusicService"
+                android:name=".service.MusicService"
                 android:enabled="true"
                 android:exported="true">
             <intent-filter>

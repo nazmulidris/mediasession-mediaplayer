@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.mediasession;
+package com.example.android.mediasession.ui;
 
 import android.content.ComponentName;
 import android.os.Bundle;
@@ -31,6 +31,11 @@ import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+
+import com.example.android.mediasession.R;
+import com.example.android.mediasession.service.MusicService;
+import com.example.android.mediasession.service.PlaybackInfoListener;
+import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 
 import java.util.List;
 

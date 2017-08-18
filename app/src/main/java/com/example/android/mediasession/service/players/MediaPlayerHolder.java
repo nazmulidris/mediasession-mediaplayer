@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.mediasession;
+package com.example.android.mediasession.service.players;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
@@ -22,6 +22,11 @@ import android.media.MediaPlayer;
 import android.os.SystemClock;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+
+import com.example.android.mediasession.service.PlaybackInfoListener;
+import com.example.android.mediasession.service.PlayerAdapter;
+import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
+import com.example.android.mediasession.ui.MainActivity;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;

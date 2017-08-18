@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.example.android.mediasession;
+package com.example.android.mediasession.service.contentcatalogs;
 
 import android.content.Context;
 import android.graphics.Bitmap;
@@ -22,12 +22,15 @@ import android.graphics.BitmapFactory;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
 
+import com.example.android.mediasession.BuildConfig;
+import com.example.android.mediasession.R;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
 
-class MusicLibrary {
+public class MusicLibrary {
 
     private static final TreeMap<String, MediaMetadataCompat> music = new TreeMap<>();
     private static final HashMap<String, Integer> albumRes = new HashMap<>();
