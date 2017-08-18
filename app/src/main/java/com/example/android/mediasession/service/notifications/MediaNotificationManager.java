@@ -25,6 +25,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
@@ -109,9 +110,13 @@ public class MediaNotificationManager {
         mService.registerReceiver(mDeleteIntentListener, new IntentFilter(ACTION_STOP));
     }
 
+    // TODO: 8/18/17 Check to see best practices around deleting channels.
+    // Once deleted, the Channel no longer appears in the System settings menus.
     public void onDestroy() {
         mService.unregisterReceiver(mDeleteIntentListener);
-        mNotificationManager.deleteNotificationChannel(CHANNEL_ID);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            mNotificationManager.deleteNotificationChannel(CHANNEL_ID);
+        }
         Log.d(TAG, "onDestroy: Existing channel deleted");
     }
 
@@ -189,28 +194,32 @@ public class MediaNotificationManager {
         return builder;
     }
 
+    // Don't create this if API is not 26.
     private void createChannel() {
-        if (mNotificationManager.getNotificationChannel(CHANNEL_ID) == null) {
-            // The id of the channel.
-            String id = CHANNEL_ID;
-            // The user-visible name of the channel.
-            CharSequence name = "MediaSession";
-            // The user-visible description of the channel.
-            String description = "MediaSession and MediaPlayer";
-            int importance = NotificationManager.IMPORTANCE_LOW;
-            NotificationChannel mChannel = new NotificationChannel(id, name, importance);
-            // Configure the notification channel.
-            mChannel.setDescription(description);
-            mChannel.enableLights(true);
-            // Sets the notification light color for notifications posted to this
-            // channel, if the device supports this feature.
-            mChannel.setLightColor(Color.RED);
-            mChannel.enableVibration(true);
-            mChannel.setVibrationPattern(new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
-            mNotificationManager.createNotificationChannel(mChannel);
-            Log.d(TAG, "createChannel: New channel created");
-        } else {
-            Log.d(TAG, "createChannel: Existing channel reused");
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (mNotificationManager.getNotificationChannel(CHANNEL_ID) == null) {
+                // The id of the channel.
+                String id = CHANNEL_ID;
+                // The user-visible name of the channel.
+                CharSequence name = "MediaSession";
+                // The user-visible description of the channel.
+                String description = "MediaSession and MediaPlayer";
+                int importance = NotificationManager.IMPORTANCE_LOW;
+                NotificationChannel mChannel = new NotificationChannel(id, name, importance);
+                // Configure the notification channel.
+                mChannel.setDescription(description);
+                mChannel.enableLights(true);
+                // Sets the notification light color for notifications posted to this
+                // channel, if the device supports this feature.
+                mChannel.setLightColor(Color.RED);
+                mChannel.enableVibration(true);
+                mChannel.setVibrationPattern(
+                        new long[]{100, 200, 300, 400, 500, 400, 300, 200, 400});
+                mNotificationManager.createNotificationChannel(mChannel);
+                Log.d(TAG, "createChannel: New channel created");
+            } else {
+                Log.d(TAG, "createChannel: Existing channel reused");
+            }
         }
     }
 

@@ -89,14 +89,14 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initializeUI() {
-        mTextDebug = findViewById(R.id.text_debug);
-        mButtonStop = findViewById(R.id.button_stop);
-        mButtonPlay = findViewById(R.id.button_play);
-        mButtonPause = findViewById(R.id.button_pause);
-        mButtonPrevious = findViewById(R.id.button_previous);
-        mButtonNext = findViewById(R.id.button_next);
-        mSeekbarAudio = findViewById(R.id.seekbar_audio);
-        mScrollContainer = findViewById(R.id.scroll_container);
+        mTextDebug = (TextView) findViewById(R.id.text_debug);
+        mButtonStop = (Button) findViewById(R.id.button_stop);
+        mButtonPlay = (Button) findViewById(R.id.button_play);
+        mButtonPause = (Button) findViewById(R.id.button_pause);
+        mButtonPrevious = (Button) findViewById(R.id.button_previous);
+        mButtonNext = (Button) findViewById(R.id.button_next);
+        mSeekbarAudio = (SeekBar) findViewById(R.id.seekbar_audio);
+        mScrollContainer = (ScrollView) findViewById(R.id.scroll_container);
 
         mButtonPause.setOnClickListener(
                 new View.OnClickListener() {
