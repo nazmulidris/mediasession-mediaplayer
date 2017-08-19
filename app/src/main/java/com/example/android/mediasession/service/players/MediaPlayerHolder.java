@@ -143,7 +143,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     public void stop() {
         // Regardless of whether or not the MediaPlayer has been created / started, the state must
         // be updated, so that MediaNotificationManager can take down the notification.
-        mainReducer(PlaybackStateCompat.STATE_STOPPED);
+        reducer(PlaybackStateCompat.STATE_STOPPED);
         release();
         logToUI("stop() and updatePlaybackState(STOPPED)");
     }
@@ -170,7 +170,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
             logToUI(String.format("playbackStart() %s",
                                   mContext.getResources().getResourceEntryName(mResourceId)));
             mMediaPlayer.start();
-            mainReducer(PlaybackStateCompat.STATE_PLAYING);
+            reducer(PlaybackStateCompat.STATE_PLAYING);
             startUpdatingCallbackWithPosition();
         }
     }
@@ -179,7 +179,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     public void pause() {
         if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
-            mainReducer(PlaybackStateCompat.STATE_PAUSED);
+            reducer(PlaybackStateCompat.STATE_PAUSED);
             logToUI("playbackPause()");
         }
     }
@@ -189,35 +189,71 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
         stopUpdatingCallbackWithPosition(true);
         logToUI("MediaPlayer playback completed");
         mPlaybackInfoListener.onPlaybackCompleted();
-        mainReducer(PlaybackStateCompat.STATE_STOPPED);
+        reducer(PlaybackStateCompat.STATE_STOPPED);
     }
 
     // This is the main reducer for the player state machine.
-    private void mainReducer(@PlaybackStateCompat.State int newPlayerState) {
+    private void reducer(@PlaybackStateCompat.State int newPlayerState) {
         mState = newPlayerState;
+
+        // Whether playback goes to completion, or whether it is stopped, the
+        // mCurrentMediaPlayedToCompletion is set to true.
         if (mState == PlaybackStateCompat.STATE_STOPPED) {
             mCurrentMediaPlayedToCompletion = true;
         }
-        PlaybackStateCompat.Builder stateBuilder =
-                new PlaybackStateCompat.Builder().setActions(getAvailableActions());
-        stateBuilder.setState(
-                mState,
-                mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
-                1.0f,
-                SystemClock.elapsedRealtime());
+
+        PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
+        stateBuilder.setActions(getAvailableActions());
+        stateBuilder.setState(mState,
+                              mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
+                              1.0f,
+                              SystemClock.elapsedRealtime());
         mPlaybackInfoListener.onPlaybackStateChange(stateBuilder.build());
     }
 
+    /**
+     * Set the current capabilities available on this session. Note: If a capability is not
+     * listed in the bitmask of capabilities then the MediaSession will not handle it. For
+     * example, if you don't want ACTION_STOP to be handled by the MediaSession, then don't
+     * included it in the bitmask that's returned.
+     */
     @PlaybackStateCompat.Actions
     private long getAvailableActions() {
-        long actions =
-                PlaybackStateCompat.ACTION_PLAY
-                | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
-                | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
-                | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
-        if (isPlaying()) {
-            actions |= PlaybackStateCompat.ACTION_PAUSE;
+        long actions;
+        switch (mState) {
+            case PlaybackStateCompat.STATE_STOPPED:
+                actions = PlaybackStateCompat.ACTION_PLAY
+                          | PlaybackStateCompat.ACTION_PAUSE
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                          | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                          | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+                break;
+            case PlaybackStateCompat.STATE_PLAYING:
+                actions = PlaybackStateCompat.ACTION_STOP
+                          | PlaybackStateCompat.ACTION_PAUSE
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                          | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                          | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+                break;
+            case PlaybackStateCompat.STATE_PAUSED:
+                actions = PlaybackStateCompat.ACTION_PLAY
+                          | PlaybackStateCompat.ACTION_STOP
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                          | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                          | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+                break;
+            default:
+                actions = PlaybackStateCompat.ACTION_PLAY
+                          | PlaybackStateCompat.ACTION_PLAY_PAUSE
+                          | PlaybackStateCompat.ACTION_STOP
+                          | PlaybackStateCompat.ACTION_PAUSE
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+                          | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                          | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                          | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
         }
         return actions;
     }
