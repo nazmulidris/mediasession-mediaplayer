@@ -20,13 +20,12 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
-import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.graphics.Color;
 import android.os.Build;
 import android.support.annotation.NonNull;
+import android.support.annotation.RequiresApi;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaDescriptionCompat;
@@ -55,7 +54,6 @@ public class MediaNotificationManager {
     private static final String TAG = "MS_NotificationManager";
     private static final String CHANNEL_ID = "com.example.android.musicplayer.channel";
     private static final int REQUEST_CODE = 501;
-    private static final String ACTION_STOP = "com.example.android.musicplayer.stop";
 
     private final MusicService mService;
 
@@ -64,7 +62,6 @@ public class MediaNotificationManager {
     private final NotificationCompat.Action mNextAction;
     private final NotificationCompat.Action mPrevAction;
     private final NotificationManager mNotificationManager;
-    private final DeleteIntentListener mDeleteIntentListener;
 
     public MediaNotificationManager(MusicService service) {
         mService = service;
@@ -104,25 +101,10 @@ public class MediaNotificationManager {
         // Cancel all notifications to handle the case where the Service was killed and
         // restarted by the system.
         mNotificationManager.cancelAll();
-
-        // Register the BroadcastReceiver.
-        mDeleteIntentListener = new DeleteIntentListener();
-        mService.registerReceiver(mDeleteIntentListener, new IntentFilter(ACTION_STOP));
     }
 
-    // TODO: 8/18/17 Check to see best practices around deleting channels.
-    // Once deleted, the Channel no longer appears in the System settings menus.
     public void onDestroy() {
-        mService.unregisterReceiver(mDeleteIntentListener);
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            mNotificationManager.deleteNotificationChannel(CHANNEL_ID);
-        }
         Log.d(TAG, "onDestroy: Existing channel deleted");
-    }
-
-    private void onNotificationDismissed() {
-        mService.getMediaSession().getController().getTransportControls().stop();
-        Log.d(TAG, "onReceive: Notification Dismissed, MediaSession.TransportControl.stop()");
     }
 
     public NotificationManager getNotificationManager() {
@@ -150,7 +132,13 @@ public class MediaNotificationManager {
                 .setStyle(
                         new MediaStyle()
                                 .setMediaSession(token)
-//                                .setShowActionsInCompactView(0, 1, 2)
+                                .setShowActionsInCompactView(0, 1, 2)
+                                // For backwards compatibility with Android L and earlier.
+                                .setShowCancelButton(true)
+                                .setCancelButtonIntent(
+                                        MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                                mService,
+                                                PlaybackStateCompat.ACTION_STOP))
                 )
                 .setColor(ContextCompat.getColor(mService, R.color.notification_bg))
                 .setSmallIcon(R.drawable.ic_stat_image_audiotrack)
@@ -163,19 +151,10 @@ public class MediaNotificationManager {
                 // Subtitle - Usually Artist name.
                 .setContentText(description.getSubtitle())
                 .setLargeIcon(MusicLibrary.getAlbumBitmap(mService, description.getMediaId()))
-                // The following is not recommended anymore since playback speed could be more
-                // than 1x.
-//                .setOngoing(isPlaying)
-//                .setWhen(isPlaying ? System.currentTimeMillis() - state.getPosition() : 0)
-//                .setShowWhen(isPlaying)
-//                .setUsesChronometer(isPlaying)
-                // Pending intent that is fired when the notification is swiped.
-                .setDeleteIntent(createDeleteIntent())
-                .setAutoCancel(false)
-                // Note: the following does not work (seemingly all the other actions except for
-                // ACTION_PLAY seem to work just fine.
-//                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
-//                        mService, PlaybackStateCompat.ACTION_STOP))
+                // When notification is deleted (when playback is paused and notification can be
+                // deleted) fire MediaButtonPendingIntent with ACTION_STOP.
+                .setDeleteIntent(MediaButtonReceiver.buildMediaButtonPendingIntent(
+                        mService, PlaybackStateCompat.ACTION_STOP))
                 // Show controls on lock screen even when user hides sensitive content.
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC);
 
@@ -194,9 +173,10 @@ public class MediaNotificationManager {
         return builder;
     }
 
-    // Don't create this if API is not 26.
+    // Does nothing on versions of Android earlier than O.
+    @RequiresApi(Build.VERSION_CODES.O)
     private void createChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+        if (isAndroidOOrHigher()) {
             if (mNotificationManager.getNotificationChannel(CHANNEL_ID) == null) {
                 // The id of the channel.
                 String id = CHANNEL_ID;
@@ -223,27 +203,15 @@ public class MediaNotificationManager {
         }
     }
 
+    private boolean isAndroidOOrHigher() {
+        return Build.VERSION.SDK_INT >= Build.VERSION_CODES.O;
+    }
+
     private PendingIntent createContentIntent() {
         Intent openUI = new Intent(mService, MainActivity.class);
         openUI.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
         return PendingIntent.getActivity(
                 mService, REQUEST_CODE, openUI, PendingIntent.FLAG_CANCEL_CURRENT);
-    }
-
-    private PendingIntent createDeleteIntent() {
-        Intent intent = new Intent(ACTION_STOP);
-        PendingIntent pendingIntent =
-                PendingIntent.getBroadcast(mService.getApplicationContext(), 0, intent, 0);
-        return pendingIntent;
-    }
-
-    // Handles notification being dismissed.
-    public class DeleteIntentListener extends BroadcastReceiver {
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            onNotificationDismissed();
-        }
     }
 
 }
