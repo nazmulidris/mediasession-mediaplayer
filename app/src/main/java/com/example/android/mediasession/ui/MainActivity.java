@@ -53,6 +53,8 @@ public class MainActivity extends AppCompatActivity {
     private ScrollView mScrollContainer;
 
     private MediaBrowserAdapter mMediaBrowserAdapter;
+    private MediaBrowserListener mMediaBrowserListener;
+    private PlaybackProgress mPlaybackProgressListener;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -60,8 +62,10 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
         initializeUI();
         mMediaBrowserAdapter = new MediaBrowserAdapter(this);
-        mMediaBrowserAdapter.addListener(new MediaBrowserListener());
-        mMediaBrowserAdapter.addListener(new PlaybackProgress());
+        mMediaBrowserListener = new MediaBrowserListener();
+        mMediaBrowserAdapter.addListener(mMediaBrowserListener);
+        mPlaybackProgressListener = new PlaybackProgress();
+        mMediaBrowserAdapter.addListener(mPlaybackProgressListener);
     }
 
     private void initializeUI() {
@@ -92,9 +96,9 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        boolean isMusicLoaded =
-                                mMediaBrowserAdapter.getState().getMediaMetadata() != null;
-                        Log.d(TAG, String.format("onClick: isMusicLoaded: %s", isMusicLoaded));
+                        MediaMetadataCompat loadedMetadata =
+                                mMediaBrowserAdapter.getState().getMediaMetadata();
+                        boolean isMusicLoaded = loadedMetadata != null;
                         if (!isMusicLoaded) {
                             String mediaId = mMediaBrowserAdapter
                                     .getMediaItemList()
@@ -102,8 +106,10 @@ public class MainActivity extends AppCompatActivity {
                                     .getMediaId();
                             mMediaBrowserAdapter
                                     .getTransportControls().playFromMediaId(mediaId, null);
+                            Log.d(TAG, "onClick: play newly-loaded media");
                         } else {
                             mMediaBrowserAdapter.getTransportControls().play();
+                            Log.d(TAG, "onClick: Play pre-loaded media");
                         }
                     }
                 });
@@ -218,34 +224,64 @@ public class MainActivity extends AppCompatActivity {
         private ScheduledExecutorService mExecutor;
 
         private boolean mPaused;
-        private long mStartTime;
+        private long mTimePlayPressed;
+        private long mPlaybackTime;
+        private MediaMetadataCompat currentlyLoadedMedia;
+
+        public boolean isPaused() {
+            return mPaused;
+        }
 
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
+            if (currentlyLoadedMedia == null) {
+                currentlyLoadedMedia = mediaMetadata;
+            }
             stopUpdating();
             int duration = getDuration(mediaMetadata).intValue();
             mSeekBarAudio.setMax(duration);
+            mSeekBarAudio.setProgress(0);
         }
 
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
             if (playbackState != null) {
                 switch (playbackState.getState()) {
+                    case PlaybackStateCompat.STATE_PLAYING:
+                        mPaused = false;
+                        startUpdating();
+                        break;
                     case PlaybackStateCompat.STATE_PAUSED:
                         mPaused = true;
                         break;
                     case PlaybackStateCompat.STATE_STOPPED:
                         mPaused = false;
                         stopUpdating();
-                        break;
-                    case PlaybackStateCompat.STATE_PLAYING:
-                        mPaused = false;
-                        startUpdating();
+                        mSeekBarAudio.setProgress(getPosition(playbackState).intValue());
                         break;
                 }
             } else {
                 Toast.makeText(MainActivity.this, "playback state is NULL", Toast.LENGTH_SHORT)
                         .show();
+            }
+        }
+
+        private void task() {
+            long currentTime = System.currentTimeMillis();
+            if (!mPaused) {
+                mPlaybackTime += currentTime - mTimePlayPressed;
+            }
+            mTimePlayPressed = currentTime;
+            mSeekBarAudio.setProgress(Long.valueOf(mPlaybackTime).intValue());
+//            Log.d(TAG, String.format("task: mPlaybackTime: %d, mTimePlayPressed: %d",
+//                                     mPlaybackTime,
+//                                     mTimePlayPressed));
+        }
+
+        private void stopUpdating() {
+            if (mExecutor != null) {
+                mExecutor.shutdownNow();
+                mExecutor = null;
             }
         }
 
@@ -259,32 +295,10 @@ public class MainActivity extends AppCompatActivity {
                     }
                 };
                 mExecutor.scheduleAtFixedRate(
-                        task,
-                        0,
-                        PLAYBACK_POSITION_REFRESH_INTERVAL_MS,
-                        TimeUnit.MILLISECONDS
-                );
-                mStartTime = System.currentTimeMillis();
+                        task, 0, PLAYBACK_POSITION_REFRESH_INTERVAL_MS, TimeUnit.MILLISECONDS);
+                mTimePlayPressed = System.currentTimeMillis();
+                mPlaybackTime = 0;
             }
-        }
-
-        private void stopUpdating() {
-            if (mExecutor != null) {
-                mExecutor.shutdownNow();
-                mExecutor = null;
-                mStartTime = 0;
-            }
-        }
-
-        private void task() {
-            long currentTime = System.currentTimeMillis();
-
-            if (!mPaused) {
-                int diff = Long.valueOf(currentTime - mStartTime).intValue();
-                mSeekBarAudio.setProgress(mSeekBarAudio.getProgress() + diff, true);
-            }
-
-            mStartTime = currentTime;
         }
     }
 
