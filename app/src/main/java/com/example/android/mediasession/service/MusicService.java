@@ -29,7 +29,7 @@ import android.util.Log;
 
 import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 import com.example.android.mediasession.service.notifications.MediaNotificationManager;
-import com.example.android.mediasession.service.players.MediaPlayerHolder;
+import com.example.android.mediasession.service.players.MediaPlayerAdapter;
 
 import java.util.List;
 
@@ -58,7 +58,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         mMediaNotificationManager = new MediaNotificationManager(this);
 
-        mPlayback = new MediaPlayerHolder(this, new MediaPlayerListener());
+        mPlayback = new MediaPlayerAdapter(this, new MediaPlayerListener());
         Log.d(TAG, "onCreate: MusicService creating MediaSession, and MediaNotificationManager");
     }
 

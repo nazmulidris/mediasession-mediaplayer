@@ -31,7 +31,7 @@ import com.example.android.mediasession.service.MusicService;
 
 import java.util.List;
 
-public class MediaSessionClientHolder {
+public class MediaBrowserAdapter {
 
     public static final String TAG = "MS_ClientHolder";
 
@@ -54,7 +54,7 @@ public class MediaSessionClientHolder {
     @Nullable
     private MediaControllerCompat mMediaController;
 
-    public MediaSessionClientHolder(Context context, ClientCallback callback) {
+    public MediaBrowserAdapter(Context context, ClientCallback callback) {
         mContext = context;
         mCallback = callback;
         mState = new InternalState();

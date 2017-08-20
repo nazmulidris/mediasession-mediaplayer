@@ -29,13 +29,13 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.example.android.mediasession.R;
-import com.example.android.mediasession.client.MediaSessionClientHolder;
+import com.example.android.mediasession.client.MediaBrowserAdapter;
 import com.example.android.mediasession.service.PlaybackInfoListener;
 
 import java.util.List;
 
 public class MainActivity extends AppCompatActivity
-        implements MediaSessionClientHolder.ClientCallback {
+        implements MediaBrowserAdapter.ClientCallback {
 
     private static final String TAG = "MS_MainActivity";
 
@@ -48,14 +48,14 @@ public class MainActivity extends AppCompatActivity
     private SeekBar mSeekbarAudio;
     private ScrollView mScrollContainer;
 
-    private MediaSessionClientHolder mMediaSessionClientHolder;
+    private MediaBrowserAdapter mMediaBrowserAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         initializeUI();
-        mMediaSessionClientHolder = new MediaSessionClientHolder(this, this);
+        mMediaBrowserAdapter = new MediaBrowserAdapter(this, this);
     }
 
     private void initializeUI() {
@@ -72,14 +72,14 @@ public class MainActivity extends AppCompatActivity
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mMediaSessionClientHolder.getTransportControls().pause();
+                        mMediaBrowserAdapter.getTransportControls().pause();
                     }
                 });
         mButtonStop.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mMediaSessionClientHolder.getTransportControls().stop();
+                        mMediaBrowserAdapter.getTransportControls().stop();
                     }
                 });
         mButtonPlay.setOnClickListener(
@@ -87,17 +87,17 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onClick(View view) {
                         boolean isMusicLoaded =
-                                mMediaSessionClientHolder.getState().mediaMetadata != null;
+                                mMediaBrowserAdapter.getState().mediaMetadata != null;
                         Log.d(TAG, String.format("onClick: isMusicLoaded: %s", isMusicLoaded));
                         if (!isMusicLoaded) {
-                            String mediaId = mMediaSessionClientHolder
+                            String mediaId = mMediaBrowserAdapter
                                     .getMediaItemList()
                                     .get(0)
                                     .getMediaId();
-                            mMediaSessionClientHolder
+                            mMediaBrowserAdapter
                                     .getTransportControls().playFromMediaId(mediaId, null);
                         } else {
-                            mMediaSessionClientHolder.getTransportControls().play();
+                            mMediaBrowserAdapter.getTransportControls().play();
                         }
                     }
                 });
@@ -105,14 +105,14 @@ public class MainActivity extends AppCompatActivity
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mMediaSessionClientHolder.getTransportControls().skipToPrevious();
+                        mMediaBrowserAdapter.getTransportControls().skipToPrevious();
                     }
                 });
         mButtonNext.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        mMediaSessionClientHolder.getTransportControls().skipToNext();
+                        mMediaBrowserAdapter.getTransportControls().skipToNext();
                     }
                 });
     }
@@ -120,13 +120,13 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void onStart() {
         super.onStart();
-        mMediaSessionClientHolder.onStart();
+        mMediaBrowserAdapter.onStart();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        mMediaSessionClientHolder.onStop();
+        mMediaBrowserAdapter.onStop();
     }
 
     // TODO: 8/7/17 Update the play/pause button when state changes.

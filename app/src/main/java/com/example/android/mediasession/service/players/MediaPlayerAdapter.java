@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
  * Exposes the functionality of the {@link MediaPlayer} and implements the {@link PlayerAdapter}
  * so that {@link MainActivity} can control music playback.
  */
-public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCompletionListener {
+public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCompletionListener {
 
     public static final int PLAYBACK_POSITION_REFRESH_INTERVAL_MS = 1000;
 
@@ -50,7 +50,7 @@ public final class MediaPlayerHolder implements PlayerAdapter, MediaPlayer.OnCom
     private int mState;
     private boolean mCurrentMediaPlayedToCompletion;
 
-    public MediaPlayerHolder(Context context, PlaybackInfoListener listener) {
+    public MediaPlayerAdapter(Context context, PlaybackInfoListener listener) {
         mContext = context.getApplicationContext();
         mPlaybackInfoListener = listener;
     }
