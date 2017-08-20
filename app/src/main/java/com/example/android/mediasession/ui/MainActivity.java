@@ -16,14 +16,9 @@
 
 package com.example.android.mediasession.ui;
 
-import android.content.ComponentName;
 import android.os.Bundle;
-import android.os.RemoteException;
-import android.support.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
-import android.support.v4.media.session.MediaControllerCompat;
-import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -34,13 +29,13 @@ import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.example.android.mediasession.R;
-import com.example.android.mediasession.service.MusicService;
+import com.example.android.mediasession.client.MediaSessionClientHolder;
 import com.example.android.mediasession.service.PlaybackInfoListener;
-import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements MediaSessionClientHolder.ClientCallback {
 
     private static final String TAG = "MS_MainActivity";
 
@@ -52,40 +47,15 @@ public class MainActivity extends AppCompatActivity {
     private Button mButtonStop;
     private SeekBar mSeekbarAudio;
     private ScrollView mScrollContainer;
-    private MediaBrowserCompat mMediaBrowser;
 
-    private final MediaBrowserConnectionCallback mMediaBrowserConnectionCallback =
-            new MediaBrowserConnectionCallback();
-    private final MediaControllerCallback mMediaControllerCallback =
-            new MediaControllerCallback();
-    private final MediaBrowserSubscriptionCallback mMediaBrowserSubscriptionCallback =
-            new MediaBrowserSubscriptionCallback();
-
-    // Metadata and PlaybackState comprise the overall state of the MediaSession, and the app
-    // should use just this information to update the UI.
-    @Nullable
-    private PlaybackStateCompat mCurrentPlaybackState;
-    @Nullable
-    private MediaMetadataCompat mCurrentMetadata;
-
-    @Nullable
-    private MediaControllerCompat mMediaController;
-    private boolean mClientIsConnectedToService = false;
-
-    private List<MediaBrowserCompat.MediaItem> mMediaItemList;
+    private MediaSessionClientHolder mMediaSessionClientHolder;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mMediaBrowser =
-                new MediaBrowserCompat(
-                        this,
-                        new ComponentName(this, MusicService.class),
-                        mMediaBrowserConnectionCallback,
-                        null);
         initializeUI();
-        resetInternalState();
+        mMediaSessionClientHolder = new MediaSessionClientHolder(this, this);
     }
 
     private void initializeUI() {
@@ -102,27 +72,32 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        getTransportControls().pause();
+                        mMediaSessionClientHolder.getTransportControls().pause();
                     }
                 });
         mButtonStop.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        getTransportControls().stop();
+                        mMediaSessionClientHolder.getTransportControls().stop();
                     }
                 });
         mButtonPlay.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        boolean isMusicLoaded = mCurrentMetadata != null;
+                        boolean isMusicLoaded =
+                                mMediaSessionClientHolder.getState().mediaMetadata != null;
                         Log.d(TAG, String.format("onClick: isMusicLoaded: %s", isMusicLoaded));
                         if (!isMusicLoaded) {
-                            String mediaId = MusicLibrary.getMediaItems().get(0).getMediaId();
-                            getTransportControls().playFromMediaId(mediaId, null);
+                            String mediaId = mMediaSessionClientHolder
+                                    .getMediaItemList()
+                                    .get(0)
+                                    .getMediaId();
+                            mMediaSessionClientHolder
+                                    .getTransportControls().playFromMediaId(mediaId, null);
                         } else {
-                            getTransportControls().play();
+                            mMediaSessionClientHolder.getTransportControls().play();
                         }
                     }
                 });
@@ -130,14 +105,14 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        getTransportControls().skipToPrevious();
+                        mMediaSessionClientHolder.getTransportControls().skipToPrevious();
                     }
                 });
         mButtonNext.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        getTransportControls().skipToNext();
+                        mMediaSessionClientHolder.getTransportControls().skipToNext();
                     }
                 });
     }
@@ -145,132 +120,22 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onStart() {
         super.onStart();
-        mMediaBrowser.connect();
+        mMediaSessionClientHolder.onStart();
     }
 
     @Override
     public void onStop() {
         super.onStop();
-        mMediaBrowser.disconnect();
+        mMediaSessionClientHolder.onStop();
     }
 
-    // Receives callbacks from the MediaBrowser when it has successfully connected to the
-    // MediaBrowserService (MusicService).
-    public class MediaBrowserConnectionCallback extends MediaBrowserCompat.ConnectionCallback {
-
-        // Happens onStart().
-        @Override
-        public void onConnected() {
-            mMediaBrowser.subscribe(mMediaBrowser.getRoot(), mMediaBrowserSubscriptionCallback);
-            try {
-                mMediaController = new MediaControllerCompat(MainActivity.this,
-                                                             mMediaBrowser.getSessionToken());
-                mMediaController.registerCallback(mMediaControllerCallback);
-                mClientIsConnectedToService = true;
-                Log.d(TAG, "onConnected: ");
-            } catch (RemoteException e) {
-                Log.d(TAG, String.format("onConnected: Problem: %s", e.toString()));
-                throw new RuntimeException(e);
-            }
-        }
-
-        // Does not happen onStop(). In fact, does not get called.
-        @Override
-        public void onConnectionSuspended() {
-            Log.d(TAG, "onConnectionSuspended: ");
-            cleanupResources();
-        }
-
-        // Does not happen onStop(). In fact, does not get called.
-        @Override
-        public void onConnectionFailed() {
-            Log.d(TAG, "onConnectionFailed: ");
-            cleanupResources();
-        }
-
-        public void cleanupResources() {
-            mMediaController.unregisterCallback(mMediaControllerCallback);
-            mMediaController = null;
-            mClientIsConnectedToService = false;
-            Log.d(TAG, "cleanupResources: Releasing MediaController");
-        }
-
-        // Happens when the MusicService dies.
-        public void onServiceDestroyed() {
-            // It is possible for the MusicService to die while the UI is running, and to handle
-            // this case, mCurrentMetadata has to be set to null here. When the Play button is
-            // pressed the media will be loaded. Basically reset the state of the Activity to
-            // what it is when it is first created.
-            resetInternalState();
-            Log.d(TAG, "onServiceDestroyed: MusicService has died!!!");
-        }
-    }
-
-    /**
-     * The internal state of the app needs to revert to what it looks like when it started before
-     * any connections to the {@link MusicService} happens via the {@link MediaSessionCompat}.
-     */
-    private void resetInternalState() {
-        mCurrentMetadata = null;
-        mCurrentPlaybackState = null;
-    }
-
-    // Receives callbacks from the MediaBrowser when the MediaBrowserService has loaded new media
-    // that is ready for playback.
-    public class MediaBrowserSubscriptionCallback extends MediaBrowserCompat.SubscriptionCallback {
-
-        @Override
-        public void onChildrenLoaded(
-                String parentId, List<MediaBrowserCompat.MediaItem> children) {
-            onMediaLoaded(children);
-        }
-
-        private void onMediaLoaded(List<MediaBrowserCompat.MediaItem> media) {
-            mMediaItemList = media;
-            StringBuffer stringBuffer = new StringBuffer();
-            for (int i = 0; i < media.size(); i++) {
-                MediaBrowserCompat.MediaItem mediaItem = media.get(i);
-                stringBuffer
-                        .append("[").append(i).append("] ")
-                        .append(mediaItem.getDescription().toString())
-                        .append("\n");
-            }
-            logToUI(String.format("onMediaLoaded:\n%s", stringBuffer));
-        }
-    }
-
-    // Receives callbacks from the MediaController and updates the UI state,
-    // i.e.: Which is the current item, whether it's playing or paused, etc.
-    public class MediaControllerCallback extends MediaControllerCompat.Callback {
-
-        @Override
-        public void onMetadataChanged(MediaMetadataCompat metadata) {
-            mCurrentMetadata = metadata;
-            updateUIOnMetadataChange();
-        }
-
-        @Override
-        public void onPlaybackStateChanged(@Nullable PlaybackStateCompat state) {
-            mCurrentPlaybackState = state;
-            updateUIOnPlaybackStateChange();
-        }
-
-        // This happens when the MusicService is killed.
-        @Override
-        public void onSessionDestroyed() {
-            mMediaBrowserConnectionCallback.onServiceDestroyed();
-            onPlaybackStateChanged(null);
-        }
-
-    }
-
-    // Methods that make UI updates.
     // TODO: 8/7/17 Update the play/pause button when state changes.
-    private void updateUIOnPlaybackStateChange() {
+    @Override
+    public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
         logToUI(String.format("Playback State Updated: %s",
-                              PlaybackInfoListener.stateToString(mCurrentPlaybackState)));
-        if (mCurrentPlaybackState != null) {
-            long currentPosition = mCurrentPlaybackState.getPosition();
+                              PlaybackInfoListener.stateToString(playbackState)));
+        if (playbackState != null) {
+            long currentPosition = playbackState.getPosition();
             logToUI(String.format("position:%d", currentPosition));
         }
 /*
@@ -287,14 +152,32 @@ public class MainActivity extends AppCompatActivity {
 */
     }
 
+    @Override
+    public void onMediaLoaded(List<MediaBrowserCompat.MediaItem> mediaItemList) {
+        if (mediaItemList != null) {
+            StringBuffer stringBuffer = new StringBuffer();
+            for (int i = 0; i < mediaItemList.size(); i++) {
+                MediaBrowserCompat.MediaItem mediaItem = mediaItemList.get(i);
+                stringBuffer
+                        .append("[").append(i).append("] ")
+                        .append(mediaItem.getDescription().toString())
+                        .append("\n");
+            }
+            logToUI(String.format("onMediaLoaded:\n%s", stringBuffer));
+        } else {
+            logToUI(String.format("onMediaLoaded:\n%s", "NULL"));
+        }
+    }
+
     // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
-    private void updateUIOnMetadataChange() {
-        final String metadataString = mCurrentMetadata == null
+    @Override
+    public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
+        final String metadataString = mediaMetadata == null
                                       ? "null"
-                                      : mCurrentMetadata.getDescription().toString();
+                                      : mediaMetadata.getDescription().toString();
         logToUI(String.format("Metadata updated: %s", metadataString));
-        if (mCurrentMetadata != null) {
-            long duration = mCurrentMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+        if (mediaMetadata != null) {
+            long duration = mediaMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
             logToUI(String.format("duration:%d", duration));
         }
 /*
@@ -319,20 +202,6 @@ public class MainActivity extends AppCompatActivity {
                             mScrollContainer.fullScroll(ScrollView.FOCUS_DOWN);
                         }
                     });
-        }
-    }
-
-    // Helper methods.
-    private MediaControllerCompat.TransportControls getTransportControls() {
-        Log.d(TAG, String.format("getTransportControls: MC is null:%s, Client is connected:%s",
-                                 mMediaController == null,
-                                 mClientIsConnectedToService));
-        if (mMediaController == null) {
-            Log.d(TAG, "getTransportControls: MediaController is null!");
-            throw new IllegalStateException();
-        } else {
-            Log.d(TAG, "getTransportControls: MediaController is not null!");
-            return mMediaController.getTransportControls();
         }
     }
 
