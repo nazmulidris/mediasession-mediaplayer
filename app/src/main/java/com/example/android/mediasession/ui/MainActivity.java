@@ -34,8 +34,7 @@ import com.example.android.mediasession.service.PlaybackInfoListener;
 
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity
-        implements MediaBrowserAdapter.ClientCallback {
+public class MainActivity extends AppCompatActivity implements MediaBrowserAdapter.ClientCallback {
 
     private static final String TAG = "MS_MainActivity";
 
@@ -87,7 +86,7 @@ public class MainActivity extends AppCompatActivity
                     @Override
                     public void onClick(View view) {
                         boolean isMusicLoaded =
-                                mMediaBrowserAdapter.getState().mediaMetadata != null;
+                                mMediaBrowserAdapter.getState().getMediaMetadata() != null;
                         Log.d(TAG, String.format("onClick: isMusicLoaded: %s", isMusicLoaded));
                         if (!isMusicLoaded) {
                             String mediaId = mMediaBrowserAdapter

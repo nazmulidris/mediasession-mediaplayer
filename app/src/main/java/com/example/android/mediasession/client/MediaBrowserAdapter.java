@@ -99,8 +99,7 @@ public class MediaBrowserAdapter {
      * any connections to the {@link MusicService} happens via the {@link MediaSessionCompat}.
      */
     public void resetState() {
-        mState.playbackState = null;
-        mState.mediaMetadata = null;
+        mState.reset();
         if (mCallback != null) {
             mCallback.onMediaLoaded(null);
             mCallback.onPlaybackStateChanged(null);
@@ -163,7 +162,7 @@ public class MediaBrowserAdapter {
 
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
-            mState.mediaMetadata = metadata;
+            mState.setMediaMetadata(metadata);
             if (mCallback != null) {
                 mCallback.onMetadataChanged(metadata);
             }
@@ -171,7 +170,7 @@ public class MediaBrowserAdapter {
 
         @Override
         public void onPlaybackStateChanged(@Nullable PlaybackStateCompat state) {
-            mState.playbackState = state;
+            mState.setPlaybackState(state);
             mCallback.onPlaybackStateChanged(state);
         }
 
@@ -189,8 +188,29 @@ public class MediaBrowserAdapter {
     // A holder class that contains the internal state.
     public class InternalState {
 
-        public PlaybackStateCompat playbackState;
-        public MediaMetadataCompat mediaMetadata;
+        private PlaybackStateCompat playbackState;
+        private MediaMetadataCompat mediaMetadata;
+
+        public void reset() {
+            playbackState = null;
+            mediaMetadata = null;
+        }
+
+        public PlaybackStateCompat getPlaybackState() {
+            return playbackState;
+        }
+
+        public void setPlaybackState(PlaybackStateCompat playbackState) {
+            this.playbackState = playbackState;
+        }
+
+        public MediaMetadataCompat getMediaMetadata() {
+            return mediaMetadata;
+        }
+
+        public void setMediaMetadata(MediaMetadataCompat mediaMetadata) {
+            this.mediaMetadata = mediaMetadata;
+        }
     }
 
     public interface ClientCallback {
