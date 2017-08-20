@@ -29,6 +29,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.TimeUnit;
+
 
 public class MusicLibrary {
 
@@ -44,6 +46,7 @@ public class MusicLibrary {
                 "Jazz & Blues",
                 "Jazz",
                 103,
+                TimeUnit.SECONDS,
                 R.raw.jazz_in_paris,
                 R.drawable.album_jazz_blues,
                 "album_jazz_blues");
@@ -54,6 +57,7 @@ public class MusicLibrary {
                 "Youtube Audio Library Rock 2",
                 "Rock",
                 160,
+                TimeUnit.SECONDS,
                 R.raw.the_coldest_shoulder,
                 R.drawable.album_youtube_audio_library_rock_2,
                 "album_youtube_audio_library_rock_2");
@@ -63,7 +67,8 @@ public class MusicLibrary {
                 "The 126ers",
                 "Youtube Audio Library Rock 2",
                 "Rock",
-                9,
+                4662,
+                TimeUnit.MILLISECONDS,
                 R.raw.trimmed,
                 R.drawable.album_youtube_audio_library_rock_2,
                 "album_youtube_audio_library_rock_2");
@@ -150,6 +155,7 @@ public class MusicLibrary {
             String album,
             String genre,
             long duration,
+            TimeUnit durationUnit,
             int musicResId,
             int albumArtResId,
             String albumArtResName) {
@@ -159,7 +165,8 @@ public class MusicLibrary {
                         .putString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID, mediaId)
                         .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, album)
                         .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, artist)
-                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, duration * 1000)
+                        .putLong(MediaMetadataCompat.METADATA_KEY_DURATION,
+                                 TimeUnit.MILLISECONDS.convert(duration, durationUnit))
                         .putString(MediaMetadataCompat.METADATA_KEY_GENRE, genre)
                         .putString(
                                 MediaMetadataCompat.METADATA_KEY_ALBUM_ART_URI,

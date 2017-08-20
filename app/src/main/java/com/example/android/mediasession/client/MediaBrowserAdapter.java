@@ -29,6 +29,7 @@ import android.util.Log;
 
 import com.example.android.mediasession.service.MusicService;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MediaBrowserAdapter {
@@ -38,7 +39,7 @@ public class MediaBrowserAdapter {
     private final InternalState mState;
 
     private final Context mContext;
-    private final ClientCallback mCallback;
+    private final List<MediaBrowserChangeListener> mListeners = new ArrayList<>();
 
     private final MediaBrowserConnectionCallback mMediaBrowserConnectionCallback =
             new MediaBrowserConnectionCallback();
@@ -54,9 +55,8 @@ public class MediaBrowserAdapter {
     @Nullable
     private MediaControllerCompat mMediaController;
 
-    public MediaBrowserAdapter(Context context, ClientCallback callback) {
+    public MediaBrowserAdapter(Context context) {
         mContext = context;
-        mCallback = callback;
         mState = new InternalState();
     }
 
@@ -100,10 +100,12 @@ public class MediaBrowserAdapter {
      */
     public void resetState() {
         mState.reset();
-        if (mCallback != null) {
-            mCallback.onMediaLoaded(null);
-            mCallback.onPlaybackStateChanged(null);
-            mCallback.onMediaLoaded(null);
+        for (MediaBrowserChangeListener listener : mListeners) {
+            if (listener != null) {
+                listener.onMediaLoaded(null);
+                listener.onPlaybackStateChanged(null);
+                listener.onMediaLoaded(null);
+            }
         }
         Log.d(TAG, "resetState: ");
     }
@@ -115,6 +117,12 @@ public class MediaBrowserAdapter {
         } else {
             Log.d(TAG, "getTransportControls: MediaController is not null!");
             return mMediaController.getTransportControls();
+        }
+    }
+
+    public void addListener(MediaBrowserChangeListener listener) {
+        if (listener != null) {
+            mListeners.add(listener);
         }
     }
 
@@ -150,8 +158,10 @@ public class MediaBrowserAdapter {
 
         private void onMediaLoaded(List<MediaBrowserCompat.MediaItem> media) {
             mMediaItemList = media;
-            if (mCallback != null) {
-                mCallback.onMediaLoaded(media);
+            for (MediaBrowserChangeListener listener : mListeners) {
+                if (listener != null) {
+                    listener.onMediaLoaded(media);
+                }
             }
         }
     }
@@ -163,15 +173,19 @@ public class MediaBrowserAdapter {
         @Override
         public void onMetadataChanged(MediaMetadataCompat metadata) {
             mState.setMediaMetadata(metadata);
-            if (mCallback != null) {
-                mCallback.onMetadataChanged(metadata);
+            for (MediaBrowserChangeListener listener : mListeners) {
+                if (listener != null) {
+                    listener.onMetadataChanged(metadata);
+                }
             }
         }
 
         @Override
         public void onPlaybackStateChanged(@Nullable PlaybackStateCompat state) {
             mState.setPlaybackState(state);
-            mCallback.onPlaybackStateChanged(state);
+            for (MediaBrowserChangeListener listener : mListeners) {
+                listener.onPlaybackStateChanged(state);
+            }
         }
 
         // This might happen if the MusicService is killed while the Activity is in the
@@ -211,17 +225,6 @@ public class MediaBrowserAdapter {
         public void setMediaMetadata(MediaMetadataCompat mediaMetadata) {
             this.mediaMetadata = mediaMetadata;
         }
-    }
-
-    public interface ClientCallback {
-
-        void onMediaLoaded(List<MediaBrowserCompat.MediaItem> mediaItemList);
-
-        void onMetadataChanged(MediaMetadataCompat mediaMetadata);
-
-        void onPlaybackStateChanged(PlaybackStateCompat playbackState);
-
-        void logToUI(String message);
     }
 
 }

@@ -38,8 +38,6 @@ import java.util.concurrent.TimeUnit;
  */
 public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCompletionListener {
 
-    public static final int PLAYBACK_POSITION_REFRESH_INTERVAL_MS = 1000;
-
     private final Context mContext;
     private MediaPlayer mMediaPlayer;
     private int mResourceId;
@@ -272,7 +270,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         mExecutor.scheduleAtFixedRate(
                 mSeekbarPositionUpdateTask,
                 0,
-                PLAYBACK_POSITION_REFRESH_INTERVAL_MS,
+                MainActivity.PlaybackProgress.PLAYBACK_POSITION_REFRESH_INTERVAL_MS,
                 TimeUnit.MILLISECONDS
         );
     }
