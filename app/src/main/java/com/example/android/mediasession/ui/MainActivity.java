@@ -27,7 +27,6 @@ import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.example.android.mediasession.R;
 import com.example.android.mediasession.client.MediaBrowserAdapter;
@@ -56,6 +55,10 @@ public class MainActivity extends AppCompatActivity {
     private MediaBrowserListener mMediaBrowserListener;
     private PlaybackProgress mPlaybackProgressListener;
 
+    // This is used to synchronize the PlaybackProgress and SeekBar so when the user is moving
+    // the scrubber on the SeekBar, it doesn't get updated automatically.
+    private boolean mUserIsSeeking;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,6 +69,37 @@ public class MainActivity extends AppCompatActivity {
         mMediaBrowserAdapter.addListener(mMediaBrowserListener);
         mPlaybackProgressListener = new PlaybackProgress();
         mMediaBrowserAdapter.addListener(mPlaybackProgressListener);
+        respondToSeekBarDragByUser();
+    }
+
+    private void respondToSeekBarDragByUser() {
+        mSeekBarAudio.setOnSeekBarChangeListener(
+                new SeekBar.OnSeekBarChangeListener() {
+                    int userSelectedPosition = 0;
+
+                    @Override
+                    public void onStartTrackingTouch(SeekBar seekBar) {
+                        mUserIsSeeking = true;
+                    }
+
+                    @Override
+                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+                        if (fromUser) {
+                            userSelectedPosition = progress;
+                        }
+                    }
+
+                    @Override
+                    public void onStopTrackingTouch(SeekBar seekBar) {
+                        mUserIsSeeking = false;
+                        mMediaBrowserAdapter.getTransportControls().seekTo(
+                                Long.valueOf(userSelectedPosition));
+                        mPlaybackProgressListener.seekTo(userSelectedPosition);
+                        Log.d(TAG,
+                              String.format("onStopTrackingTouch: seekTo(%d)",
+                                            userSelectedPosition));
+                    }
+                });
     }
 
     private void initializeUI() {
@@ -228,10 +262,6 @@ public class MainActivity extends AppCompatActivity {
         private long mPlaybackTime;
         private MediaMetadataCompat currentlyLoadedMedia;
 
-        public boolean isPaused() {
-            return mPaused;
-        }
-
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
             if (currentlyLoadedMedia == null) {
@@ -261,9 +291,13 @@ public class MainActivity extends AppCompatActivity {
                         break;
                 }
             } else {
-                Toast.makeText(MainActivity.this, "playback state is NULL", Toast.LENGTH_SHORT)
-                        .show();
+                Log.d(TAG, "onPlaybackStateChanged: playback state is NULL");
             }
+        }
+
+        public void seekTo(int position) {
+            mPlaybackTime = position;
+            mTimePlayPressed = System.currentTimeMillis();
         }
 
         private void task() {
@@ -272,10 +306,11 @@ public class MainActivity extends AppCompatActivity {
                 mPlaybackTime += currentTime - mTimePlayPressed;
             }
             mTimePlayPressed = currentTime;
-            mSeekBarAudio.setProgress(Long.valueOf(mPlaybackTime).intValue());
-//            Log.d(TAG, String.format("task: mPlaybackTime: %d, mTimePlayPressed: %d",
-//                                     mPlaybackTime,
-//                                     mTimePlayPressed));
+            if (!mUserIsSeeking) {
+                mSeekBarAudio.setProgress(Long.valueOf(mPlaybackTime).intValue());
+            } else {
+                Log.d(TAG, "task: skipping setProgress, since user is moving scrubber");
+            }
         }
 
         private void stopUpdating() {

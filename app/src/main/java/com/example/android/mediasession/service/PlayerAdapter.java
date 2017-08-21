@@ -40,5 +40,5 @@ public interface PlayerAdapter {
 
     void initializeProgressCallback();
 
-    void seekTo(int position);
+    void seekTo(long position);
 }

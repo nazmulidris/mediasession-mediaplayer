@@ -8,7 +8,7 @@ This project is a copy of the
 [Playing music on cars and wearables codelab](https://codelabs.developers.google.com/codelabs/android-music-player/).
 
 The code has been modified to:
-- Use a different MediaPlayer wrapper (MediaPlayerHolder.java) that does
+- Use a different MediaPlayer wrapper (MediaPlayerAdapter.java) that does
   not do audio focus.
 - Have a super simple UI (no list view).
 

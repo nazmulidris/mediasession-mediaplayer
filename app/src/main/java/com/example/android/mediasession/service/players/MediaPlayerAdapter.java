@@ -221,7 +221,6 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
                        | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
                        | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
                        | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
-        ;
         switch (mState) {
             case PlaybackStateCompat.STATE_STOPPED:
                 actions |= PlaybackStateCompat.ACTION_PLAY
@@ -229,7 +228,8 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
                 break;
             case PlaybackStateCompat.STATE_PLAYING:
                 actions |= PlaybackStateCompat.ACTION_STOP
-                           | PlaybackStateCompat.ACTION_PAUSE;
+                           | PlaybackStateCompat.ACTION_PAUSE
+                           | PlaybackStateCompat.ACTION_SEEK_TO;
                 break;
             case PlaybackStateCompat.STATE_PAUSED:
                 actions |= PlaybackStateCompat.ACTION_PLAY
@@ -245,10 +245,10 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     }
 
     @Override
-    public void seekTo(int position) {
+    public void seekTo(long position) {
         if (mMediaPlayer != null) {
             logToUI(String.format("seekTo() %d ms", position));
-            mMediaPlayer.seekTo(position);
+            mMediaPlayer.seekTo(position, MediaPlayer.SEEK_PREVIOUS_SYNC);
         }
     }
 

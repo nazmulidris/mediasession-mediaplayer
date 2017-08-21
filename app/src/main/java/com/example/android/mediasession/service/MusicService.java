@@ -67,7 +67,7 @@ public class MusicService extends MediaBrowserServiceCompat {
         mMediaNotificationManager.onDestroy();
         mPlayback.stop();
         mSession.release();
-        Log.d(TAG, "onDestroy: MediaPlayerHolder stopped, and MediaSession released");
+        Log.d(TAG, "onDestroy: MediaPlayerAdapter stopped, and MediaSession released");
     }
 
     @Override
@@ -85,7 +85,7 @@ public class MusicService extends MediaBrowserServiceCompat {
         return mSession;
     }
 
-    // MediaSession Callback: Transport Controls -> MediaPlayerHolder
+    // MediaSession Callback: Transport Controls -> MediaPlayerAdapter
     public class MediaSessionCallback extends MediaSessionCompat.Callback {
 
         @Override
@@ -129,9 +129,13 @@ public class MusicService extends MediaBrowserServiceCompat {
                     MusicLibrary.getPreviousSong(mPlayback.getCurrentMediaId()), null);
         }
 
+        @Override
+        public void onSeekTo(long pos) {
+            mPlayback.seekTo(pos);
+        }
     }
 
-    // MediaPlayerHolder Callback: MediaPlayerHolder state -> MusicService.
+    // MediaPlayerAdapter Callback: MediaPlayerAdapter state -> MusicService.
     public class MediaPlayerListener extends PlaybackInfoListener {
 
         private final ServiceManager mServiceManager;
