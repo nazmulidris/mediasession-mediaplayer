@@ -19,6 +19,7 @@ package com.example.android.mediasession.client;
 import android.content.ComponentName;
 import android.content.Context;
 import android.os.RemoteException;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
@@ -100,13 +101,14 @@ public class MediaBrowserAdapter {
      */
     public void resetState() {
         mState.reset();
-        for (MediaBrowserChangeListener listener : mListeners) {
-            if (listener != null) {
+        performOnAllListeners(new ListenerCommand() {
+            @Override
+            public void perform(MediaBrowserChangeListener listener) {
                 listener.onMediaLoaded(null);
                 listener.onPlaybackStateChanged(null);
                 listener.onMediaLoaded(null);
             }
-        }
+        });
         Log.d(TAG, "resetState: ");
     }
 
@@ -126,18 +128,51 @@ public class MediaBrowserAdapter {
         }
     }
 
+    public void removeListener(MediaBrowserChangeListener listener) {
+        if (listener != null) {
+            if (mListeners.contains(listener)) {
+                mListeners.remove(listener);
+            }
+        }
+    }
+
+    public void performOnAllListeners(@NonNull ListenerCommand command) {
+        for (MediaBrowserChangeListener listener : mListeners) {
+            if (listener != null) {
+                try {
+                    command.perform(listener);
+                } catch (Exception e) {
+                    removeListener(listener);
+                }
+            }
+        }
+    }
+
+    public interface ListenerCommand {
+
+        void perform(@NonNull MediaBrowserChangeListener listener);
+    }
+
     // Receives callbacks from the MediaBrowser when it has successfully connected to the
     // MediaBrowserService (MusicService).
     public class MediaBrowserConnectionCallback extends MediaBrowserCompat.ConnectionCallback {
 
-        // Happens onStart().
+        // Happens as a result of onStart().
         @Override
         public void onConnected() {
             mMediaBrowser.subscribe(mMediaBrowser.getRoot(), mMediaBrowserSubscriptionCallback);
             try {
+                // Get a MediaController for the MediaSession.
                 mMediaController = new MediaControllerCompat(mContext,
                                                              mMediaBrowser.getSessionToken());
                 mMediaController.registerCallback(mMediaControllerCallback);
+
+                // Sync existing MediaSession state to the UI.
+                mMediaControllerCallback.onMetadataChanged(
+                        mMediaController.getMetadata());
+                mMediaControllerCallback
+                        .onPlaybackStateChanged(mMediaController.getPlaybackState());
+
                 Log.d(TAG, "onConnected: Subscribing to media, Creating MediaController");
             } catch (RemoteException e) {
                 Log.d(TAG, String.format("onConnected: Problem: %s", e.toString()));
@@ -156,13 +191,14 @@ public class MediaBrowserAdapter {
             onMediaLoaded(children);
         }
 
-        private void onMediaLoaded(List<MediaBrowserCompat.MediaItem> media) {
+        private void onMediaLoaded(final List<MediaBrowserCompat.MediaItem> media) {
             mMediaItemList = media;
-            for (MediaBrowserChangeListener listener : mListeners) {
-                if (listener != null) {
+            performOnAllListeners(new ListenerCommand() {
+                @Override
+                public void perform(@NonNull MediaBrowserChangeListener listener) {
                     listener.onMediaLoaded(media);
                 }
-            }
+            });
         }
     }
 
@@ -171,7 +207,7 @@ public class MediaBrowserAdapter {
     public class MediaControllerCallback extends MediaControllerCompat.Callback {
 
         @Override
-        public void onMetadataChanged(MediaMetadataCompat metadata) {
+        public void onMetadataChanged(final MediaMetadataCompat metadata) {
             // Filtering out needless updates, given that the metadata has not changed.
             if (isMediaIdSame(metadata, mState.getMediaMetadata())) {
                 Log.d(TAG, "onMetadataChanged: Filtering out needless onMetadataChanged() update");
@@ -179,19 +215,23 @@ public class MediaBrowserAdapter {
             } else {
                 mState.setMediaMetadata(metadata);
             }
-            for (MediaBrowserChangeListener listener : mListeners) {
-                if (listener != null) {
+            performOnAllListeners(new ListenerCommand() {
+                @Override
+                public void perform(@NonNull MediaBrowserChangeListener listener) {
                     listener.onMetadataChanged(metadata);
                 }
-            }
+            });
         }
 
         @Override
-        public void onPlaybackStateChanged(@Nullable PlaybackStateCompat state) {
+        public void onPlaybackStateChanged(@Nullable final PlaybackStateCompat state) {
             mState.setPlaybackState(state);
-            for (MediaBrowserChangeListener listener : mListeners) {
-                listener.onPlaybackStateChanged(state);
-            }
+            performOnAllListeners(new ListenerCommand() {
+                @Override
+                public void perform(@NonNull MediaBrowserChangeListener listener) {
+                    listener.onPlaybackStateChanged(state);
+                }
+            });
         }
 
         // This might happen if the MusicService is killed while the Activity is in the

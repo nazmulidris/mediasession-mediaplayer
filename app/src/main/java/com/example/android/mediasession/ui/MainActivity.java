@@ -202,7 +202,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
             String metadataString = mediaMetadata == null
-                                    ? "null"
+                                    ? "NULL"
                                     : mediaMetadata.getDescription().toString();
             long duration = getDuration(mediaMetadata);
             logToUI(String.format("\nMetadata updated: %s", metadataString));
@@ -275,23 +275,23 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
+            // Change the progress reporting UI so that it matches the current state.
             if (playbackState != null) {
                 switch (playbackState.getState()) {
                     case PlaybackStateCompat.STATE_PLAYING:
-                        mPaused = false;
-                        startUpdating();
+                        startUpdating(getPosition(playbackState).intValue(), false);
                         break;
                     case PlaybackStateCompat.STATE_PAUSED:
-                        mPaused = true;
+                        startUpdating(getPosition(playbackState).intValue(), true);
                         break;
                     case PlaybackStateCompat.STATE_STOPPED:
-                        mPaused = false;
                         stopUpdating();
                         mSeekBarAudio.setProgress(getPosition(playbackState).intValue());
                         break;
                 }
             } else {
-                Log.d(TAG, "onPlaybackStateChanged: playback state is NULL");
+                // State is empty.
+                stopUpdating();
             }
         }
 
@@ -309,18 +309,21 @@ public class MainActivity extends AppCompatActivity {
             if (!mUserIsSeeking) {
                 mSeekBarAudio.setProgress(Long.valueOf(mPlaybackTime).intValue());
             } else {
-                Log.d(TAG, "task: skipping setProgress, since user is moving scrubber");
+                Log.d(TAG,
+                      "PlaybackProgress.task: skipping setProgress, since user is moving scrubber");
             }
         }
 
         private void stopUpdating() {
+            mPaused = false;
             if (mExecutor != null) {
                 mExecutor.shutdownNow();
                 mExecutor = null;
             }
         }
 
-        private void startUpdating() {
+        private void startUpdating(int startPosition, boolean isPaused) {
+            mPaused = isPaused;
             if (mExecutor == null) {
                 mExecutor = Executors.newSingleThreadScheduledExecutor();
                 Runnable task = new Runnable() {
@@ -332,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
                 mExecutor.scheduleAtFixedRate(
                         task, 0, PLAYBACK_POSITION_REFRESH_INTERVAL_MS, TimeUnit.MILLISECONDS);
                 mTimePlayPressed = System.currentTimeMillis();
-                mPlaybackTime = 0;
+                mPlaybackTime = startPosition;
             }
         }
     }
