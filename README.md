@@ -1,5 +1,5 @@
-Simple MediaPlayer Sample
-=========================
+Simple Media Library for Android
+================================
 
 Please refer to [the Wiki](https://github.com/nazmulidris/mediasession-mediaplayer/wiki) to get details about what this project is intended to do.
 
