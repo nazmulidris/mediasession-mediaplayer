@@ -35,9 +35,6 @@ public abstract class MediaBrowserChangeListener {
     public void onPlaybackStateChanged(@Nullable PlaybackStateCompat playbackState) {
     }
 
-    public void logToUI(String message) {
-    }
-
     /**
      * @return Current playback position in ms.
      */

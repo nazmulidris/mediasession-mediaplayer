@@ -27,6 +27,7 @@ import android.widget.Button;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
+import android.widget.ToggleButton;
 
 import com.example.android.mediasession.R;
 import com.example.android.mediasession.client.MediaBrowserAdapter;
@@ -42,14 +43,12 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MS_MainActivity";
 
-    private TextView mTextDebug;
-    private Button mButtonPlay;
-    private Button mButtonPause;
+    private TextView mTitleTextView;
+    private TextView mArtistTextView;
+    private ToggleButton mButtonPlay;
     private Button mButtonPrevious;
     private Button mButtonNext;
-    private Button mButtonStop;
     private SeekBar mSeekBarAudio;
-    private ScrollView mScrollContainer;
 
     private MediaBrowserAdapter mMediaBrowserAdapter;
     private MediaBrowserListener mMediaBrowserListener;
@@ -103,33 +102,22 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void initializeUI() {
-        mTextDebug = (TextView) findViewById(R.id.text_debug);
-        mButtonStop = (Button) findViewById(R.id.button_stop);
-        mButtonPlay = (Button) findViewById(R.id.button_play);
-        mButtonPause = (Button) findViewById(R.id.button_pause);
-        mButtonPrevious = (Button) findViewById(R.id.button_previous);
-        mButtonNext = (Button) findViewById(R.id.button_next);
-        mSeekBarAudio = (SeekBar) findViewById(R.id.seekbar_audio);
-        mScrollContainer = (ScrollView) findViewById(R.id.scroll_container);
+        mTitleTextView = findViewById(R.id.song_title);
+        mArtistTextView = findViewById(R.id.song_artist);
+        mButtonPlay = findViewById(R.id.button_play);
+        mButtonPrevious = findViewById(R.id.button_previous);
+        mButtonNext = findViewById(R.id.button_next);
+        mSeekBarAudio = findViewById(R.id.seekbar_audio);
 
-        mButtonPause.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        mMediaBrowserAdapter.getTransportControls().pause();
-                    }
-                });
-        mButtonStop.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        mMediaBrowserAdapter.getTransportControls().stop();
-                    }
-                });
         mButtonPlay.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
+                        if (!mButtonPlay.isChecked()) {
+                            mMediaBrowserAdapter.getTransportControls().pause();
+                            return;
+                        }
+
                         MediaMetadataCompat loadedMetadata =
                                 mMediaBrowserAdapter.getState().getMediaMetadata();
                         boolean isMusicLoaded = loadedMetadata != null;
@@ -182,20 +170,6 @@ public class MainActivity extends AppCompatActivity {
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
             StringBuffer stateToString = PlaybackInfoListener.stateToString(playbackState);
             long position = getPosition(playbackState);
-            logToUI(String.format("\nPlayback State Updated: %s", stateToString));
-            logToUI(String.format("position: %d", position));
-/*
-            if (state == null
-                || state.getState() == PlaybackState.STATE_PAUSED
-                || state.getState() == PlaybackState.STATE_STOPPED) {
-                mPlayPause.setImageDrawable(
-                        ContextCompat.getDrawable(this, R.drawable.ic_play_arrow_black_36dp));
-            } else {
-                mPlayPause.setImageDrawable(
-                        ContextCompat.getDrawable(this, R.drawable.ic_pause_black_36dp));
-            }
-            mPlaybackControls.setVisibility(state == null ? View.GONE : View.VISIBLE);
-*/
         }
 
         // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
@@ -205,22 +179,20 @@ public class MainActivity extends AppCompatActivity {
                                     ? "NULL"
                                     : mediaMetadata.getDescription().toString();
             long duration = getDuration(mediaMetadata);
-            logToUI(String.format("\nMetadata updated: %s", metadataString));
-            logToUI(String.format("duration: %d", duration));
-/*
-        mTitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getTitle());
-        mSubtitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getSubtitle());
-        mAlbumArt.setImageBitmap(
-                mCurrentMetadata == null
-                ? null
-                : MusicLibrary.getAlbumBitmap(this, mCurrentMetadata.getDescription().getMediaId()));
-*/
+
+            if (mediaMetadata == null) {
+                return;
+            }
+            mTitleTextView.setText(
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE));
+            mArtistTextView.setText(
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST));
         }
 
         @Override
         public void onMediaLoaded(List<MediaBrowserCompat.MediaItem> mediaItemList) {
             if (mediaItemList != null) {
-                StringBuffer stringBuffer = new StringBuffer();
+                StringBuilder stringBuffer = new StringBuilder();
                 for (int i = 0; i < mediaItemList.size(); i++) {
                     MediaBrowserCompat.MediaItem mediaItem = mediaItemList.get(i);
                     stringBuffer
@@ -228,27 +200,9 @@ public class MainActivity extends AppCompatActivity {
                             .append(mediaItem.getDescription().toString())
                             .append("\n");
                 }
-                logToUI(String.format("\nonMediaLoaded:\n%s", stringBuffer));
-            } else {
-                logToUI(String.format("\nonMediaLoaded:\n%s", "NULL"));
+                Log.d(TAG, stringBuffer.toString());
             }
         }
-
-        public void logToUI(String message) {
-            if (mTextDebug != null) {
-                mTextDebug.append(message);
-                mTextDebug.append("\n");
-                // Moves the scrollContainer focus to the end.
-                mScrollContainer.post(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                mScrollContainer.fullScroll(ScrollView.FOCUS_DOWN);
-                            }
-                        });
-            }
-        }
-
     }
 
     public class PlaybackProgress extends MediaBrowserChangeListener {

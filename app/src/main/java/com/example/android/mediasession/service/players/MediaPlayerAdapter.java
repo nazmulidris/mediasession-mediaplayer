@@ -248,7 +248,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     public void seekTo(long position) {
         if (mMediaPlayer != null) {
             logToUI(String.format("seekTo() %d ms", position));
-            mMediaPlayer.seekTo(position, MediaPlayer.SEEK_PREVIOUS_SYNC);
+            mMediaPlayer.seekTo((int) position);
         }
     }
 
