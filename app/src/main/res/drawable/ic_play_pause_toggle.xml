@@ -16,6 +16,6 @@
   -->
 
 <selector xmlns:android="http://schemas.android.com/apk/res/android">
-    <item android:drawable="@drawable/ic_play" android:state_checked="false" />
-    <item android:drawable="@drawable/ic_pause" />
+    <item android:drawable="@drawable/ic_media_with_play" android:state_pressed="false" />
+    <item android:drawable="@drawable/ic_media_with_pause" />
 </selector>

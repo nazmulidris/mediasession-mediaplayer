@@ -47,6 +47,7 @@ public class MainActivity extends AppCompatActivity {
     private ImageView mAlbumArt;
     private TextView mTitleTextView;
     private TextView mArtistTextView;
+    private ImageView mMediaControlsImage;
     private Button mButtonPlay;
     private Button mButtonPrevious;
     private Button mButtonNext;
@@ -108,6 +109,7 @@ public class MainActivity extends AppCompatActivity {
         mTitleTextView = findViewById(R.id.song_title);
         mArtistTextView = findViewById(R.id.song_artist);
         mAlbumArt = findViewById(R.id.album_art);
+        mMediaControlsImage = findViewById(R.id.media_controls);
         mButtonPlay = findViewById(R.id.button_play);
         mButtonPrevious = findViewById(R.id.button_previous);
         mButtonNext = findViewById(R.id.button_next);
@@ -159,6 +161,7 @@ public class MainActivity extends AppCompatActivity {
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
             mIsPlaying = playbackState != null &&
                     playbackState.getState() == PlaybackStateCompat.STATE_PLAYING;
+            mMediaControlsImage.setPressed(mIsPlaying);
         }
 
         // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.

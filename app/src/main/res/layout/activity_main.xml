@@ -70,23 +70,27 @@
         android:id="@+id/seekbar_audio"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"
-        app:layout_constraintBottom_toTopOf="@+id/button_play"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
     <ImageView
         android:id="@+id/media_controls"
-        android:layout_width="128dp"
-        android:layout_height="128dp"
-        android:src="@drawable/ic_media_buttons"
+        android:layout_width="192dp"
+        android:layout_height="192dp"
+        android:alpha=".9"
+        android:src="@drawable/ic_play_pause_toggle"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/guideline" />
+        app:layout_constraintTop_toTopOf="@+id/guideline"
+        tools:ignore="ContentDescription" />
 
     <Button
         android:id="@+id/button_previous"
-        android:layout_width="36dp"
+        android:layout_width="50dp"
         android:layout_height="0dp"
         android:background="@android:color/transparent"
         android:contentDescription="@string/label_previous"
@@ -109,7 +113,7 @@
 
     <Button
         android:id="@+id/button_next"
-        android:layout_width="36dp"
+        android:layout_width="50dp"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
         android:background="@android:color/transparent"
@@ -124,7 +128,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        app:layout_constraintGuide_percent=".66" />
+        app:layout_constraintGuide_percent=".5" />
 
 
 </android.support.constraint.ConstraintLayout>
