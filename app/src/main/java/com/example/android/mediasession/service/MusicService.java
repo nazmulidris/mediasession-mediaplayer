@@ -19,9 +19,11 @@ package com.example.android.mediasession.service;
 import android.app.Notification;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaBrowserServiceCompat;
+import android.support.v4.media.MediaDescriptionCompat;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
@@ -31,6 +33,7 @@ import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 import com.example.android.mediasession.service.notifications.MediaNotificationManager;
 import com.example.android.mediasession.service.players.MediaPlayerAdapter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MusicService extends MediaBrowserServiceCompat {
@@ -52,14 +55,21 @@ public class MusicService extends MediaBrowserServiceCompat {
         mCallback = new MediaSessionCallback();
         mSession.setCallback(mCallback);
         mSession.setFlags(
-                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS
-                | MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
+                MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS |
+                MediaSessionCompat.FLAG_HANDLES_QUEUE_COMMANDS |
+                MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS);
         setSessionToken(mSession.getSessionToken());
 
         mMediaNotificationManager = new MediaNotificationManager(this);
 
         mPlayback = new MediaPlayerAdapter(this, new MediaPlayerListener());
         Log.d(TAG, "onCreate: MusicService creating MediaSession, and MediaNotificationManager");
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        super.onTaskRemoved(rootIntent);
+        stopSelf();
     }
 
     @Override
@@ -71,40 +81,66 @@ public class MusicService extends MediaBrowserServiceCompat {
     }
 
     @Override
-    public BrowserRoot onGetRoot(String clientPackageName, int clientUid, Bundle rootHints) {
+    public BrowserRoot onGetRoot(@NonNull String clientPackageName,
+                                 int clientUid,
+                                 Bundle rootHints) {
         return new BrowserRoot(MusicLibrary.getRoot(), null);
     }
 
     @Override
     public void onLoadChildren(
-            final String parentMediaId, final Result<List<MediaBrowserCompat.MediaItem>> result) {
+            @NonNull final String parentMediaId,
+            @NonNull final Result<List<MediaBrowserCompat.MediaItem>> result) {
         result.sendResult(MusicLibrary.getMediaItems());
-    }
-
-    public MediaSessionCompat getMediaSession() {
-        return mSession;
     }
 
     // MediaSession Callback: Transport Controls -> MediaPlayerAdapter
     public class MediaSessionCallback extends MediaSessionCompat.Callback {
+        private final List<MediaSessionCompat.QueueItem> mPlaylist = new ArrayList<>();
+        private int mQueueIndex = -1;
+        private MediaMetadataCompat mPreparedMedia;
 
         @Override
-        public void onPlayFromMediaId(String mediaId, Bundle extras) {
+        public void onAddQueueItem(MediaDescriptionCompat description) {
+            mPlaylist.add(new MediaSessionCompat.QueueItem(description, description.hashCode()));
+            mQueueIndex = (mQueueIndex == -1) ? 0 : mQueueIndex;
+        }
 
-            mSession.setActive(true);
-            MediaMetadataCompat metadata = MusicLibrary.getMetadata(MusicService.this, mediaId);
-            mSession.setMetadata(metadata);
+        @Override
+        public void onRemoveQueueItem(MediaDescriptionCompat description) {
+            mPlaylist.remove(new MediaSessionCompat.QueueItem(description, description.hashCode()));
+            mQueueIndex = (mPlaylist.isEmpty()) ? -1 : mQueueIndex;
+        }
 
-            mPlayback.loadAndPlayMedia(metadata);
+        @Override
+        public void onPrepare() {
+            if (mQueueIndex < 0 && mPlaylist.isEmpty()) {
+                // Nothing to play.
+                return;
+            }
 
-            Log.d(TAG, "onPlayFromMediaId: MediaSession active");
+            final String mediaId = mPlaylist.get(mQueueIndex).getDescription().getMediaId();
+            mPreparedMedia = MusicLibrary.getMetadata(MusicService.this, mediaId);
+            mSession.setMetadata(mPreparedMedia);
+
+            if (!mSession.isActive()) {
+                mSession.setActive(true);
+            }
         }
 
         @Override
         public void onPlay() {
-            if (mPlayback.getCurrentMediaId() != null) {
-                onPlayFromMediaId(mPlayback.getCurrentMediaId(), null);
+            if (!isReadyToPlay()) {
+                // Nothing to play.
+                return;
             }
+
+            if (mPreparedMedia == null) {
+                onPrepare();
+            }
+
+            mPlayback.playFromMedia(mPreparedMedia);
+            Log.d(TAG, "onPlayFromMediaId: MediaSession active");
         }
 
         @Override
@@ -119,19 +155,25 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSkipToNext() {
-            onPlayFromMediaId(
-                    MusicLibrary.getNextSong(mPlayback.getCurrentMediaId()), null);
+            mQueueIndex = (++mQueueIndex % mPlaylist.size());
+            mPreparedMedia = null;
+            onPlay();
         }
 
         @Override
         public void onSkipToPrevious() {
-            onPlayFromMediaId(
-                    MusicLibrary.getPreviousSong(mPlayback.getCurrentMediaId()), null);
+            mQueueIndex = mQueueIndex > 0 ? mQueueIndex - 1 : mPlaylist.size() - 1;
+            mPreparedMedia = null;
+            onPlay();
         }
 
         @Override
         public void onSeekTo(long pos) {
             mPlayback.seekTo(pos);
+        }
+
+        private boolean isReadyToPlay() {
+            return (!mPlaylist.isEmpty());
         }
     }
 
@@ -163,11 +205,6 @@ public class MusicService extends MediaBrowserServiceCompat {
             }
         }
 
-        @Override
-        public void onLogUpdated(String formattedMessage) {
-            Log.d(TAG, String.format("MPH: %s", formattedMessage));
-        }
-
         class ServiceManager {
 
             private void moveServiceToStartedState(PlaybackStateCompat state) {
@@ -180,11 +217,9 @@ public class MusicService extends MediaBrowserServiceCompat {
                             MusicService.this,
                             new Intent(MusicService.this, MusicService.class));
                     mServiceInStartedState = true;
-                    generateLog(state, "startForegroundService(true)");
                 }
 
                 startForeground(MediaNotificationManager.NOTIFICATION_ID, notification);
-                generateLog(state, "startForeground()");
             }
 
             private void updateNotificationForPause(PlaybackStateCompat state) {
@@ -194,25 +229,13 @@ public class MusicService extends MediaBrowserServiceCompat {
                                 mPlayback.getCurrentMedia(), state, getSessionToken());
                 mMediaNotificationManager.getNotificationManager()
                         .notify(MediaNotificationManager.NOTIFICATION_ID, notification);
-                generateLog(state, "stopForeground(false)");
             }
 
             private void moveServiceOutOfStartedState(PlaybackStateCompat state) {
                 stopForeground(true);
                 stopSelf();
                 mServiceInStartedState = false;
-                generateLog(state, "stopForeground(true), stopSelf()");
             }
-
-            private void generateLog(PlaybackStateCompat state, String message) {
-                Log.d(TAG,
-                      String.format("onStateChanged(%s): %s",
-                                    PlaybackInfoListener.stateToString(state.getState()),
-                                    message
-                      )
-                );
-            }
-
         }
 
     }

@@ -26,37 +26,9 @@ import java.util.List;
 
 public abstract class MediaBrowserChangeListener {
 
-    public void onMediaLoaded(@Nullable List<MediaBrowserCompat.MediaItem> mediaItemList) {
-    }
-
     public void onMetadataChanged(@Nullable MediaMetadataCompat mediaMetadata) {
     }
 
     public void onPlaybackStateChanged(@Nullable PlaybackStateCompat playbackState) {
     }
-
-    /**
-     * @return Current playback position in ms.
-     */
-    @NonNull
-    public static Long getPosition(@Nullable PlaybackStateCompat state) {
-        if (state != null) {
-            return state.getPosition();
-        } else {
-            return 0L;
-        }
-    }
-
-    /**
-     * @return Duration of media in ms.
-     */
-    @NonNull
-    public static Long getDuration(@Nullable MediaMetadataCompat metadata) {
-        if (metadata != null) {
-            return metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
-        } else {
-            return 0L;
-        }
-    }
-
 }

@@ -126,29 +126,27 @@ public class MediaNotificationManager {
                                                          MediaSessionCompat.Token token,
                                                          boolean isPlaying,
                                                          MediaDescriptionCompat description) {
+
+        // Create the (mandatory) notification channel when running on Android Oreo.
         if (isAndroidOOrHigher()) {
             createChannel();
         }
-        NotificationCompat.Builder builder =
-                new NotificationCompat.Builder(mService, CHANNEL_ID);
-        builder
-                .setStyle(
-                        new MediaStyle()
-                                .setMediaSession(token)
-                                .setShowActionsInCompactView(0, 1, 2)
-                                // For backwards compatibility with Android L and earlier.
-                                .setShowCancelButton(true)
-                                .setCancelButtonIntent(
-                                        MediaButtonReceiver.buildMediaButtonPendingIntent(
-                                                mService,
-                                                PlaybackStateCompat.ACTION_STOP))
-                )
+
+        NotificationCompat.Builder builder = new NotificationCompat.Builder(mService, CHANNEL_ID);
+        builder.setStyle(
+                new MediaStyle()
+                        .setMediaSession(token)
+                        .setShowActionsInCompactView(0, 1, 2)
+                        // For backwards compatibility with Android L and earlier.
+                        .setShowCancelButton(true)
+                        .setCancelButtonIntent(
+                                MediaButtonReceiver.buildMediaButtonPendingIntent(
+                                        mService,
+                                        PlaybackStateCompat.ACTION_STOP)))
                 .setColor(ContextCompat.getColor(mService, R.color.notification_bg))
                 .setSmallIcon(R.drawable.ic_stat_image_audiotrack)
                 // Pending intent that is fired when user clicks on notification.
                 .setContentIntent(createContentIntent())
-                // Subtext - Usually Album name.
-                .setSubText(PlaybackInfoListener.stateToString(state))
                 // Title - Usually Song name.
                 .setContentTitle(description.getTitle())
                 // Subtitle - Usually Artist name.
@@ -180,14 +178,12 @@ public class MediaNotificationManager {
     @RequiresApi(Build.VERSION_CODES.O)
     private void createChannel() {
         if (mNotificationManager.getNotificationChannel(CHANNEL_ID) == null) {
-            // The id of the channel.
-            String id = CHANNEL_ID;
             // The user-visible name of the channel.
             CharSequence name = "MediaSession";
             // The user-visible description of the channel.
             String description = "MediaSession and MediaPlayer";
             int importance = NotificationManager.IMPORTANCE_LOW;
-            NotificationChannel mChannel = new NotificationChannel(id, name, importance);
+            NotificationChannel mChannel = new NotificationChannel(CHANNEL_ID, name, importance);
             // Configure the notification channel.
             mChannel.setDescription(description);
             mChannel.enableLights(true);

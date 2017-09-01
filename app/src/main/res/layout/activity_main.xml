@@ -20,7 +20,8 @@
                                              xmlns:tools="http://schemas.android.com/tools"
                                              android:id="@+id/frameLayout"
                                              android:layout_width="match_parent"
-                                             android:layout_height="match_parent">
+                                             android:layout_height="match_parent"
+                                             android:background="@android:color/holo_red_dark">
 
 
     <TextView
@@ -62,32 +63,41 @@
         android:id="@+id/button_previous"
         android:layout_width="wrap_content"
         android:layout_height="48dp"
-        android:layout_marginBottom="16dp"
-        android:layout_marginStart="16dp"
+        android:layout_marginEnd="8dp"
+        android:layout_marginStart="8dp"
         android:text="@string/label_previous"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        app:layout_constraintEnd_toStartOf="@+id/button_play"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/button_play" />
 
     <ToggleButton
         android:id="@+id/button_play"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:layout_marginEnd="8dp"
         android:layout_marginStart="8dp"
-        android:textOff="@string/label_play"
-        android:textOn="@string/label_pause"
-        app:layout_constraintBottom_toBottomOf="@+id/button_previous"
-        app:layout_constraintEnd_toStartOf="@+id/button_next"
-        app:layout_constraintStart_toEndOf="@+id/button_previous" />
+        android:background="@drawable/ic_play_pause_toggle"
+        android:textOff=""
+        android:textOn=""
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="@+id/guideline" />
 
     <Button
         android:id="@+id/button_next"
         android:layout_width="128dp"
         android:layout_height="0dp"
-        android:layout_marginEnd="16dp"
+        android:layout_marginStart="8dp"
         android:text="@string/label_next"
-        app:layout_constraintBottom_toBottomOf="@+id/button_previous"
-        app:layout_constraintEnd_toEndOf="parent" />
+        app:layout_constraintStart_toEndOf="@+id/button_play"
+        app:layout_constraintTop_toTopOf="@+id/button_play" />
+
+    <android.support.constraint.Guideline
+        android:id="@+id/guideline"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        app:layout_constraintGuide_percent=".66" />
 
 
 </android.support.constraint.ConstraintLayout>

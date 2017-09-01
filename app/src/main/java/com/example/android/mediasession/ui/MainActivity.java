@@ -24,7 +24,6 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -91,12 +90,11 @@ public class MainActivity extends AppCompatActivity {
                     @Override
                     public void onStopTrackingTouch(SeekBar seekBar) {
                         mUserIsSeeking = false;
-                        mMediaBrowserAdapter.getTransportControls().seekTo(
-                                Long.valueOf(userSelectedPosition));
+                        mMediaBrowserAdapter.getTransportControls().seekTo(userSelectedPosition);
                         mPlaybackProgressListener.seekTo(userSelectedPosition);
                         Log.d(TAG,
-                              String.format("onStopTrackingTouch: seekTo(%d)",
-                                            userSelectedPosition));
+                                String.format("onStopTrackingTouch: seekTo(%d)",
+                                        userSelectedPosition));
                     }
                 });
     }
@@ -115,23 +113,8 @@ public class MainActivity extends AppCompatActivity {
                     public void onClick(View view) {
                         if (!mButtonPlay.isChecked()) {
                             mMediaBrowserAdapter.getTransportControls().pause();
-                            return;
-                        }
-
-                        MediaMetadataCompat loadedMetadata =
-                                mMediaBrowserAdapter.getState().getMediaMetadata();
-                        boolean isMusicLoaded = loadedMetadata != null;
-                        if (!isMusicLoaded) {
-                            String mediaId = mMediaBrowserAdapter
-                                    .getMediaItemList()
-                                    .get(0)
-                                    .getMediaId();
-                            mMediaBrowserAdapter
-                                    .getTransportControls().playFromMediaId(mediaId, null);
-                            Log.d(TAG, "onClick: play newly-loaded media");
                         } else {
                             mMediaBrowserAdapter.getTransportControls().play();
-                            Log.d(TAG, "onClick: Play pre-loaded media");
                         }
                     }
                 });
@@ -168,18 +151,14 @@ public class MainActivity extends AppCompatActivity {
         // TODO: 8/7/17 Update the play/pause button when state changes.
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
-            StringBuffer stateToString = PlaybackInfoListener.stateToString(playbackState);
-            long position = getPosition(playbackState);
+            final boolean isPlaying = playbackState != null &&
+                    playbackState.getState() == PlaybackStateCompat.STATE_PLAYING;
+            mButtonPlay.setChecked(isPlaying);
         }
 
         // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
-            String metadataString = mediaMetadata == null
-                                    ? "NULL"
-                                    : mediaMetadata.getDescription().toString();
-            long duration = getDuration(mediaMetadata);
-
             if (mediaMetadata == null) {
                 return;
             }
@@ -187,21 +166,6 @@ public class MainActivity extends AppCompatActivity {
                     mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE));
             mArtistTextView.setText(
                     mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST));
-        }
-
-        @Override
-        public void onMediaLoaded(List<MediaBrowserCompat.MediaItem> mediaItemList) {
-            if (mediaItemList != null) {
-                StringBuilder stringBuffer = new StringBuilder();
-                for (int i = 0; i < mediaItemList.size(); i++) {
-                    MediaBrowserCompat.MediaItem mediaItem = mediaItemList.get(i);
-                    stringBuffer
-                            .append("[").append(i).append("] ")
-                            .append(mediaItem.getDescription().toString())
-                            .append("\n");
-                }
-                Log.d(TAG, stringBuffer.toString());
-            }
         }
     }
 
@@ -218,11 +182,16 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
-            if (currentlyLoadedMedia == null) {
-                currentlyLoadedMedia = mediaMetadata;
+            if (mediaMetadata == null) {
+                return;
             }
+
+            currentlyLoadedMedia = mediaMetadata;
             stopUpdating();
-            int duration = getDuration(mediaMetadata).intValue();
+
+            final int duration =
+                    (int) mediaMetadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
+            Log.d(TAG, "Duration set to: " + duration);
             mSeekBarAudio.setMax(duration);
             mSeekBarAudio.setProgress(0);
         }
@@ -233,14 +202,14 @@ public class MainActivity extends AppCompatActivity {
             if (playbackState != null) {
                 switch (playbackState.getState()) {
                     case PlaybackStateCompat.STATE_PLAYING:
-                        startUpdating(getPosition(playbackState).intValue(), false);
+                        startUpdating((int) playbackState.getPosition(), false);
                         break;
                     case PlaybackStateCompat.STATE_PAUSED:
-                        startUpdating(getPosition(playbackState).intValue(), true);
+                        startUpdating((int) playbackState.getPosition(), true);
                         break;
                     case PlaybackStateCompat.STATE_STOPPED:
                         stopUpdating();
-                        mSeekBarAudio.setProgress(getPosition(playbackState).intValue());
+                        mSeekBarAudio.setProgress(0);
                         break;
                 }
             } else {
@@ -264,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
                 mSeekBarAudio.setProgress(Long.valueOf(mPlaybackTime).intValue());
             } else {
                 Log.d(TAG,
-                      "PlaybackProgress.task: skipping setProgress, since user is moving scrubber");
+                        "PlaybackProgress.task: skipping setProgress, since user is moving scrubber");
             }
         }
 

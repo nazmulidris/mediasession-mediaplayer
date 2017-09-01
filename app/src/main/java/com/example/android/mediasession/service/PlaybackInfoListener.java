@@ -21,46 +21,6 @@ import android.support.v4.media.session.PlaybackStateCompat;
 
 public abstract class PlaybackInfoListener {
 
-    public static StringBuffer stateToString(@Nullable PlaybackStateCompat state) {
-        if (state == null) {
-            return new StringBuffer("NULL");
-        } else {
-            return stateToString(state.getState());
-        }
-    }
-
-    public static StringBuffer stateToString(@PlaybackStateCompat.State int state) {
-        StringBuffer stateString = new StringBuffer();
-        switch (state) {
-            case PlaybackStateCompat.STATE_PLAYING:
-                stateString.append("PLAYING");
-                break;
-            case PlaybackStateCompat.STATE_STOPPED:
-                stateString.append("STOPPED");
-                break;
-            case PlaybackStateCompat.STATE_PAUSED:
-                stateString.append("PAUSED");
-                break;
-            case PlaybackStateCompat.STATE_ERROR:
-                stateString.append("ERROR");
-                break;
-            case PlaybackStateCompat.STATE_NONE:
-                stateString.append("NONE");
-                break;
-            default:
-                stateString.append("UNKNOWN");
-        }
-        return stateString;
-    }
-
-    public abstract void onLogUpdated(String formattedMessage);
-
-    public void onDurationChanged(int duration) {
-    }
-
-    public void onPositionChanged(int position) {
-    }
-
     public void onPlaybackCompleted() {
     }
 
