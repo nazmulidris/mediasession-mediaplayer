@@ -24,6 +24,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.ToggleButton;
@@ -32,6 +33,7 @@ import com.example.android.mediasession.R;
 import com.example.android.mediasession.client.MediaBrowserAdapter;
 import com.example.android.mediasession.client.MediaBrowserChangeListener;
 import com.example.android.mediasession.service.PlaybackInfoListener;
+import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 
 import java.util.List;
 import java.util.concurrent.Executors;
@@ -42,9 +44,10 @@ public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MS_MainActivity";
 
+    private ImageView mAlbumArt;
     private TextView mTitleTextView;
     private TextView mArtistTextView;
-    private ToggleButton mButtonPlay;
+    private Button mButtonPlay;
     private Button mButtonPrevious;
     private Button mButtonNext;
     private SeekBar mSeekBarAudio;
@@ -56,6 +59,8 @@ public class MainActivity extends AppCompatActivity {
     // This is used to synchronize the PlaybackProgress and SeekBar so when the user is moving
     // the scrubber on the SeekBar, it doesn't get updated automatically.
     private boolean mUserIsSeeking;
+
+    private boolean mIsPlaying;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -102,6 +107,7 @@ public class MainActivity extends AppCompatActivity {
     private void initializeUI() {
         mTitleTextView = findViewById(R.id.song_title);
         mArtistTextView = findViewById(R.id.song_artist);
+        mAlbumArt = findViewById(R.id.album_art);
         mButtonPlay = findViewById(R.id.button_play);
         mButtonPrevious = findViewById(R.id.button_previous);
         mButtonNext = findViewById(R.id.button_next);
@@ -111,7 +117,7 @@ public class MainActivity extends AppCompatActivity {
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        if (!mButtonPlay.isChecked()) {
+                        if (mIsPlaying) {
                             mMediaBrowserAdapter.getTransportControls().pause();
                         } else {
                             mMediaBrowserAdapter.getTransportControls().play();
@@ -151,9 +157,8 @@ public class MainActivity extends AppCompatActivity {
         // TODO: 8/7/17 Update the play/pause button when state changes.
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
-            final boolean isPlaying = playbackState != null &&
+            mIsPlaying = playbackState != null &&
                     playbackState.getState() == PlaybackStateCompat.STATE_PLAYING;
-            mButtonPlay.setChecked(isPlaying);
         }
 
         // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
@@ -166,6 +171,9 @@ public class MainActivity extends AppCompatActivity {
                     mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE));
             mArtistTextView.setText(
                     mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST));
+            mAlbumArt.setImageBitmap(MusicLibrary.getAlbumBitmap(
+                    MainActivity.this,
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)));
         }
     }
 

@@ -21,8 +21,24 @@
                                              android:id="@+id/frameLayout"
                                              android:layout_width="match_parent"
                                              android:layout_height="match_parent"
-                                             android:background="@android:color/holo_red_dark">
+                                             tools:background="@drawable/album_jazz_blues">
 
+    <ImageView
+        android:id="@+id/album_art"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"
+        tools:ignore="ContentDescription" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:background="#a0ffffff"
+        app:layout_constraintBottom_toBottomOf="@+id/song_artist"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        tools:ignore="ContentDescription" />
 
     <TextView
         android:id="@+id/song_title"
@@ -40,8 +56,9 @@
     <TextView
         android:id="@+id/song_artist"
         android:layout_width="match_parent"
-        android:layout_height="28dp"
+        android:layout_height="wrap_content"
         android:gravity="center"
+        android:paddingBottom="12dp"
         android:textAppearance="@style/TextAppearance.AppCompat.Medium"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -58,39 +75,49 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />
 
-
-    <Button
-        android:id="@+id/button_previous"
-        android:layout_width="wrap_content"
-        android:layout_height="48dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:text="@string/label_previous"
-        app:layout_constraintEnd_toStartOf="@+id/button_play"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="@+id/button_play" />
-
-    <ToggleButton
-        android:id="@+id/button_play"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:layout_marginEnd="8dp"
-        android:layout_marginStart="8dp"
-        android:background="@drawable/ic_play_pause_toggle"
-        android:textOff=""
-        android:textOn=""
+    <ImageView
+        android:id="@+id/media_controls"
+        android:layout_width="128dp"
+        android:layout_height="128dp"
+        android:src="@drawable/ic_media_buttons"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="@+id/guideline" />
 
     <Button
+        android:id="@+id/button_previous"
+        android:layout_width="36dp"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/label_previous"
+        android:text=""
+        app:layout_constraintBottom_toBottomOf="@+id/media_controls"
+        app:layout_constraintStart_toStartOf="@+id/media_controls"
+        app:layout_constraintTop_toTopOf="@+id/media_controls" />
+
+    <Button
+        android:id="@+id/button_play"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/label_play_pause"
+        android:text=""
+        app:layout_constraintBottom_toBottomOf="@+id/media_controls"
+        app:layout_constraintEnd_toStartOf="@+id/button_next"
+        app:layout_constraintStart_toEndOf="@+id/button_previous"
+        app:layout_constraintTop_toTopOf="@+id/media_controls" />
+
+    <Button
         android:id="@+id/button_next"
-        android:layout_width="128dp"
+        android:layout_width="36dp"
         android:layout_height="0dp"
         android:layout_marginStart="8dp"
-        android:text="@string/label_next"
-        app:layout_constraintStart_toEndOf="@+id/button_play"
-        app:layout_constraintTop_toTopOf="@+id/button_play" />
+        android:background="@android:color/transparent"
+        android:contentDescription="@string/label_next"
+        android:text=""
+        app:layout_constraintBottom_toBottomOf="@+id/media_controls"
+        app:layout_constraintEnd_toEndOf="@+id/media_controls"
+        app:layout_constraintTop_toTopOf="@+id/media_controls" />
 
     <android.support.constraint.Guideline
         android:id="@+id/guideline"
