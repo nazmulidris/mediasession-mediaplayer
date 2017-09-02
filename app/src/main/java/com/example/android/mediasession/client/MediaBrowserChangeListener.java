@@ -20,11 +20,15 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
 import java.util.List;
 
 public abstract class MediaBrowserChangeListener {
+
+    public void onConnected(@Nullable MediaControllerCompat mediaController) {
+    }
 
     public void onMetadataChanged(@Nullable MediaMetadataCompat mediaMetadata) {
     }

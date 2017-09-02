@@ -65,18 +65,6 @@
         app:layout_constraintTop_toBottomOf="@+id/song_title"
         tools:text="Song Artist" />
 
-
-    <SeekBar
-        android:id="@+id/seekbar_audio"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginStart="16dp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
-
     <ImageView
         android:id="@+id/media_controls"
         android:layout_width="192dp"
@@ -130,5 +118,15 @@
         android:orientation="horizontal"
         app:layout_constraintGuide_percent=".5" />
 
+    <com.example.android.mediasession.ui.MediaSeekBar
+        android:id="@+id/seekbar_audio"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginStart="16dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintStart_toStartOf="parent" />
 
 </android.support.constraint.ConstraintLayout>

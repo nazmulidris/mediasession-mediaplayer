@@ -158,7 +158,12 @@ public class MediaBrowserAdapter {
                 mMediaControllerCallback
                         .onPlaybackStateChanged(mMediaController.getPlaybackState());
 
-                Log.d(TAG, "onConnected: Subscribing to media, Creating MediaController");
+                performOnAllListeners(new ListenerCommand() {
+                    @Override
+                    public void perform(@NonNull MediaBrowserChangeListener listener) {
+                        listener.onConnected(mMediaController);
+                    }
+                });
             } catch (RemoteException e) {
                 Log.d(TAG, String.format("onConnected: Problem: %s", e.toString()));
                 throw new RuntimeException(e);
