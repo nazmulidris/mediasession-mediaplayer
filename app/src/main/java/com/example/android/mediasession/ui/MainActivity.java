@@ -49,10 +49,6 @@ public class MainActivity extends AppCompatActivity {
     private MediaBrowserAdapter mMediaBrowserAdapter;
     private MediaBrowserListener mMediaBrowserListener;
 
-    // This is used to synchronize the PlaybackProgress and SeekBar so when the user is moving
-    // the scrubber on the SeekBar, it doesn't get updated automatically.
-    private boolean mUserIsSeeking;
-
     private boolean mIsPlaying;
 
     @Override
@@ -63,36 +59,6 @@ public class MainActivity extends AppCompatActivity {
         mMediaBrowserAdapter = new MediaBrowserAdapter(this);
         mMediaBrowserListener = new MediaBrowserListener();
         mMediaBrowserAdapter.addListener(mMediaBrowserListener);
-        respondToSeekBarDragByUser();
-    }
-
-    private void respondToSeekBarDragByUser() {
-        mSeekBarAudio.setOnSeekBarChangeListener(
-                new SeekBar.OnSeekBarChangeListener() {
-                    int userSelectedPosition = 0;
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {
-//                        mUserIsSeeking = true;
-                    }
-
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-//                        if (fromUser) {
-//                            userSelectedPosition = progress;
-//                        }
-                    }
-
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {
-//                        mUserIsSeeking = false;
-//                        mMediaBrowserAdapter.getTransportControls().seekTo(userSelectedPosition);
-//                        mPlaybackProgressListener.seekTo(userSelectedPosition);
-//                        Log.d(TAG,
-//                                String.format("onStopTrackingTouch: seekTo(%d)",
-//                                        userSelectedPosition));
-                    }
-                });
     }
 
     private void initializeUI() {
