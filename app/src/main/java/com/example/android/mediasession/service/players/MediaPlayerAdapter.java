@@ -169,7 +169,7 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
             mCurrentMediaPlayedToCompletion = true;
         }
 
-        PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
+        final PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
         stateBuilder.setActions(getAvailableActions());
         stateBuilder.setState(mState,
                               mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
@@ -217,6 +217,17 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
     public void seekTo(long position) {
         if (mMediaPlayer != null) {
             mMediaPlayer.seekTo((int) position);
+
+            if (mMediaPlayer.isPlaying()) {
+                setNewState(PlaybackStateCompat.STATE_PLAYING);
+            }
+        }
+    }
+
+    @Override
+    public void setVolume(float volume) {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.setVolume(volume, volume);
         }
     }
 }

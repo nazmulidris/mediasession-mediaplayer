@@ -40,10 +40,6 @@ public class MediaSeekBar extends AppCompatSeekBar {
     private OnSeekBarChangeListener mOnSeekBarChangeListener = new OnSeekBarChangeListener() {
         @Override
         public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-            if (fromUser && mProgressAnimator != null) {
-                mProgressAnimator.cancel();
-                mProgressAnimator = null;
-            }
         }
 
         @Override
@@ -53,8 +49,8 @@ public class MediaSeekBar extends AppCompatSeekBar {
 
         @Override
         public void onStopTrackingTouch(SeekBar seekBar) {
-            mIsTracking = false;
             mMediaController.getTransportControls().seekTo(getProgress());
+            mIsTracking = false;
         }
     };
     private ValueAnimator mProgressAnimator;
@@ -111,12 +107,20 @@ public class MediaSeekBar extends AppCompatSeekBar {
         public void onPlaybackStateChanged(PlaybackStateCompat state) {
             super.onPlaybackStateChanged(state);
 
+            // If there's an ongoing animation, stop it now.
+            if (mProgressAnimator != null) {
+                mProgressAnimator.cancel();
+                mProgressAnimator = null;
+            }
+
             final int progress = state != null
                     ? (int) state.getPosition()
                     : 0;
-
             setProgress(progress);
 
+            // If the media is playing then the seekbar should follow it, and the easiest
+            // way to do that is to create a ValueAnimator to update it so the bar reaches
+            // the end of the media the same time as playback gets there (or close enough).
             if (state != null && state.getState() == PlaybackStateCompat.STATE_PLAYING) {
                 final int timeToEnd = (int) ((getMax() - progress) / state.getPlaybackSpeed());
 
@@ -125,11 +129,6 @@ public class MediaSeekBar extends AppCompatSeekBar {
                 mProgressAnimator.setInterpolator(new LinearInterpolator());
                 mProgressAnimator.addUpdateListener(this);
                 mProgressAnimator.start();
-            } else {
-                if (mProgressAnimator != null) {
-                    mProgressAnimator.cancel();
-                    mProgressAnimator = null;
-                }
             }
         }
 
@@ -145,11 +144,15 @@ public class MediaSeekBar extends AppCompatSeekBar {
         }
 
         @Override
-        public void onAnimationUpdate(ValueAnimator valueAnimator) {
-            if (!mIsTracking) {
-                final int animatedIntValue = (int) valueAnimator.getAnimatedValue();
-                setProgress(animatedIntValue);
+        public void onAnimationUpdate(final ValueAnimator valueAnimator) {
+            // If the user is changing the slider, cancel the animation.
+            if (mIsTracking) {
+                valueAnimator.cancel();
+                return;
             }
+
+            final int animatedIntValue = (int) valueAnimator.getAnimatedValue();
+            setProgress(animatedIntValue);
         }
     }
 }

@@ -28,6 +28,9 @@ import android.support.v4.media.session.PlaybackStateCompat;
 
 public abstract class PlayerAdapter {
 
+    private static final float MEDIA_VOLUME_DEFAULT = 1.0f;
+    private static final float MEDIA_VOLUME_DUCK = 0.2f;
+
     private static final IntentFilter AUDIO_NOISY_INTENT_FILTER =
             new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY);
 
@@ -89,6 +92,8 @@ public abstract class PlayerAdapter {
 
     public abstract void seekTo(long position);
 
+    public abstract void setVolume(float volume);
+
     private void registerAudioNoisyReceiver() {
         if (!mAudioNoisyReceiverRegistered) {
             mApplicationContext.registerReceiver(mAudioNoisyReceiver, AUDIO_NOISY_INTENT_FILTER);
@@ -126,9 +131,12 @@ public abstract class PlayerAdapter {
                 case AudioManager.AUDIOFOCUS_GAIN:
                     if (mPlayOnAudioFocus && !isPlaying()) {
                         play();
+                    } else if (isPlaying()) {
+                        setVolume(MEDIA_VOLUME_DEFAULT);
                     }
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                    setVolume(MEDIA_VOLUME_DUCK);
                     break;
                 case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                     if (isPlaying()) {
