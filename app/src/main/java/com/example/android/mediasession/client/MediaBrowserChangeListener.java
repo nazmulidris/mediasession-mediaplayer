@@ -20,13 +20,14 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.media.MediaBrowserCompat;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
 import java.util.List;
 
 public abstract class MediaBrowserChangeListener {
 
-    public void onMediaLoaded(@Nullable List<MediaBrowserCompat.MediaItem> mediaItemList) {
+    public void onConnected(@Nullable MediaControllerCompat mediaController) {
     }
 
     public void onMetadataChanged(@Nullable MediaMetadataCompat mediaMetadata) {
@@ -34,32 +35,4 @@ public abstract class MediaBrowserChangeListener {
 
     public void onPlaybackStateChanged(@Nullable PlaybackStateCompat playbackState) {
     }
-
-    public void logToUI(String message) {
-    }
-
-    /**
-     * @return Current playback position in ms.
-     */
-    @NonNull
-    public static Long getPosition(@Nullable PlaybackStateCompat state) {
-        if (state != null) {
-            return state.getPosition();
-        } else {
-            return 0L;
-        }
-    }
-
-    /**
-     * @return Duration of media in ms.
-     */
-    @NonNull
-    public static Long getDuration(@Nullable MediaMetadataCompat metadata) {
-        if (metadata != null) {
-            return metadata.getLong(MediaMetadataCompat.METADATA_KEY_DURATION);
-        } else {
-            return 0L;
-        }
-    }
-
 }

@@ -28,27 +28,22 @@ import com.example.android.mediasession.service.PlayerAdapter;
 import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 import com.example.android.mediasession.ui.MainActivity;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
-
 /**
  * Exposes the functionality of the {@link MediaPlayer} and implements the {@link PlayerAdapter}
  * so that {@link MainActivity} can control music playback.
  */
-public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCompletionListener {
+public final class MediaPlayerAdapter extends PlayerAdapter {
 
     private final Context mContext;
     private MediaPlayer mMediaPlayer;
-    private int mResourceId;
+    private String mFilename;
     private PlaybackInfoListener mPlaybackInfoListener;
-    private ScheduledExecutorService mExecutor;
-    private Runnable mSeekbarPositionUpdateTask;
     private MediaMetadataCompat mCurrentMedia;
     private int mState;
     private boolean mCurrentMediaPlayedToCompletion;
 
     public MediaPlayerAdapter(Context context, PlaybackInfoListener listener) {
+        super(context);
         mContext = context.getApplicationContext();
         mPlaybackInfoListener = listener;
     }
@@ -63,17 +58,22 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     private void initializeMediaPlayer() {
         if (mMediaPlayer == null) {
             mMediaPlayer = new MediaPlayer();
-            mMediaPlayer.setOnCompletionListener(this);
-            logToUI("mMediaPlayer = new MediaPlayer()");
+            mMediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mediaPlayer) {
+                    mPlaybackInfoListener.onPlaybackCompleted();
+                    setNewState(PlaybackStateCompat.STATE_STOPPED);
+                }
+            });
         }
     }
 
     // Implements PlaybackControl.
     @Override
-    public void loadAndPlayMedia(MediaMetadataCompat metadata) {
+    public void playFromMedia(MediaMetadataCompat metadata) {
         mCurrentMedia = metadata;
         String mediaId = metadata.getDescription().getMediaId();
-        loadAndPlayMedia(MusicLibrary.getMusicRes(mediaId));
+        playFile(MusicLibrary.getMusicFilename(mediaId));
     }
 
     @Override
@@ -81,19 +81,8 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         return mCurrentMedia;
     }
 
-    @Override
-    public String getCurrentMediaId() {
-        return mCurrentMedia == null ? null : mCurrentMedia.getDescription().getMediaId();
-    }
-
-    @Override
-    public int getCurrentState() {
-        return mState;
-    }
-
-    @Override
-    public void loadAndPlayMedia(int resourceId) {
-        boolean mediaChanged = (resourceId != mResourceId);
+    private void playFile(String filename) {
+        boolean mediaChanged = (mFilename == null || !filename.equals(mFilename));
         if (mCurrentMediaPlayedToCompletion) {
             // Last audio file was played to completion, the resourceId hasn't changed, but the
             // player was released, so force a reload of the media file for playback.
@@ -111,83 +100,63 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
             release();
         }
 
-        mResourceId = resourceId;
+        mFilename = filename;
 
         initializeMediaPlayer();
 
-        AssetFileDescriptor assetFileDescriptor =
-                mContext.getResources().openRawResourceFd(mResourceId);
         try {
-            logToUI("load() {1. setDataSource}");
-            mMediaPlayer.setDataSource(assetFileDescriptor);
+            AssetFileDescriptor assetFileDescriptor = mContext.getAssets().openFd(mFilename);
+            mMediaPlayer.setDataSource(
+                    assetFileDescriptor.getFileDescriptor(),
+                    assetFileDescriptor.getStartOffset(),
+                    assetFileDescriptor.getLength());
         } catch (Exception e) {
-            logToUI(e.toString());
+            throw new RuntimeException("Failed to open file: " + mFilename, e);
         }
 
         try {
-            logToUI("load() {2. prepare}");
             mMediaPlayer.prepare();
         } catch (Exception e) {
-            logToUI(e.toString());
+            throw new RuntimeException("Failed to open file: " + mFilename, e);
         }
-
-        initializeProgressCallback();
-        logToUI("initializeProgressCallback()");
 
         play();
     }
 
     @Override
-    public void stop() {
+    public void onStop() {
         // Regardless of whether or not the MediaPlayer has been created / started, the state must
         // be updated, so that MediaNotificationManager can take down the notification.
         setNewState(PlaybackStateCompat.STATE_STOPPED);
         release();
-        logToUI("stop() and updatePlaybackState(STOPPED)");
     }
 
     private void release() {
         if (mMediaPlayer != null) {
-            stopUpdatingCallbackWithPosition(true);
             mMediaPlayer.release();
             mMediaPlayer = null;
-            logToUI("release() and mMediaPlayer = null");
         }
     }
 
     @Override
     public boolean isPlaying() {
-        if (mMediaPlayer != null) {
-            return mMediaPlayer.isPlaying();
-        }
-        return false;
+        return mMediaPlayer != null && mMediaPlayer.isPlaying();
     }
 
-    public void play() {
+    @Override
+    protected void onPlay() {
         if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
-            logToUI(String.format("playbackStart() %s",
-                                  mContext.getResources().getResourceEntryName(mResourceId)));
             mMediaPlayer.start();
             setNewState(PlaybackStateCompat.STATE_PLAYING);
-            startUpdatingCallbackWithPosition();
         }
     }
 
     @Override
-    public void pause() {
+    protected void onPause() {
         if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
             mMediaPlayer.pause();
             setNewState(PlaybackStateCompat.STATE_PAUSED);
-            logToUI("playbackPause()");
         }
-    }
-
-    @Override
-    public void onCompletion(MediaPlayer mediaPlayer) {
-        stopUpdatingCallbackWithPosition(true);
-        logToUI("MediaPlayer playback completed");
-        mPlaybackInfoListener.onPlaybackCompleted();
-        setNewState(PlaybackStateCompat.STATE_STOPPED);
     }
 
     // This is the main reducer for the player state machine.
@@ -200,7 +169,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
             mCurrentMediaPlayedToCompletion = true;
         }
 
-        PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
+        final PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
         stateBuilder.setActions(getAvailableActions());
         stateBuilder.setState(mState,
                               mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
@@ -247,71 +216,18 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     @Override
     public void seekTo(long position) {
         if (mMediaPlayer != null) {
-            logToUI(String.format("seekTo() %d ms", position));
-            mMediaPlayer.seekTo(position, MediaPlayer.SEEK_PREVIOUS_SYNC);
-        }
-    }
+            mMediaPlayer.seekTo((int) position);
 
-    /**
-     * Syncs the mMediaPlayer position with mPlaybackProgressCallback via recurring task.
-     */
-    private void startUpdatingCallbackWithPosition() {
-        if (mExecutor == null) {
-            mExecutor = Executors.newSingleThreadScheduledExecutor();
-        }
-        if (mSeekbarPositionUpdateTask == null) {
-            mSeekbarPositionUpdateTask = new Runnable() {
-                @Override
-                public void run() {
-                    updateProgressCallbackTask();
-                }
-            };
-        }
-        mExecutor.scheduleAtFixedRate(
-                mSeekbarPositionUpdateTask,
-                0,
-                MainActivity.PlaybackProgress.PLAYBACK_POSITION_REFRESH_INTERVAL_MS,
-                TimeUnit.MILLISECONDS
-        );
-    }
-
-    // Reports media playback position to mPlaybackProgressCallback.
-    private void stopUpdatingCallbackWithPosition(boolean resetUIPlaybackPosition) {
-        if (mExecutor != null) {
-            mExecutor.shutdownNow();
-            mExecutor = null;
-            mSeekbarPositionUpdateTask = null;
-            if (resetUIPlaybackPosition && mPlaybackInfoListener != null) {
-                mPlaybackInfoListener.onPositionChanged(0);
-            }
-        }
-    }
-
-    private void updateProgressCallbackTask() {
-        if (mMediaPlayer != null && mMediaPlayer.isPlaying()) {
-            int currentPosition = mMediaPlayer.getCurrentPosition();
-            if (mPlaybackInfoListener != null) {
-                mPlaybackInfoListener.onPositionChanged(currentPosition);
+            if (mMediaPlayer.isPlaying()) {
+                setNewState(PlaybackStateCompat.STATE_PLAYING);
             }
         }
     }
 
     @Override
-    public void initializeProgressCallback() {
-        final int duration = mMediaPlayer.getDuration();
-        if (mPlaybackInfoListener != null) {
-            mPlaybackInfoListener.onDurationChanged(duration);
-            mPlaybackInfoListener.onPositionChanged(0);
-            logToUI(String.format("firing setPlaybackDuration(%d sec)",
-                                  TimeUnit.MILLISECONDS.toSeconds(duration)));
-            logToUI("firing setPlaybackPosition(0)");
+    public void setVolume(float volume) {
+        if (mMediaPlayer != null) {
+            mMediaPlayer.setVolume(volume, volume);
         }
     }
-
-    private void logToUI(String message) {
-        if (mPlaybackInfoListener != null) {
-            mPlaybackInfoListener.onLogUpdated(message);
-        }
-    }
-
 }

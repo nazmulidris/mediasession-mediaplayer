@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
 <!--
   ~ Copyright 2017 Nazmul Idris. All rights reserved.
   ~
@@ -14,12 +15,7 @@
   ~ limitations under the License.
   -->
 
-<resources>
-    <string name="app_name">A MediaSession and MediaPlayer Sample</string>
-    <string name="label_stop">Stop</string>
-    <string name="label_pause">Pause</string>
-    <string name="label_play">Play</string>
-    <string name="label_play_pause">Play and pause toggle</string>
-    <string name="label_previous">Previous track</string>
-    <string name="label_next">Next track</string>
-</resources>
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@drawable/ic_media_with_play" android:state_pressed="false" />
+    <item android:drawable="@drawable/ic_media_with_pause" />
+</selector>

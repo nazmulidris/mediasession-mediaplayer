@@ -16,6 +16,7 @@
 
 package com.example.android.mediasession.service.contentcatalogs;
 
+import android.content.ContentResolver;
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -36,7 +37,7 @@ public class MusicLibrary {
 
     private static final TreeMap<String, MediaMetadataCompat> music = new TreeMap<>();
     private static final HashMap<String, Integer> albumRes = new HashMap<>();
-    private static final HashMap<String, Integer> musicRes = new HashMap<>();
+    private static final HashMap<String, String> musicFileName = new HashMap<>();
 
     static {
         createMediaMetadataCompat(
@@ -47,7 +48,7 @@ public class MusicLibrary {
                 "Jazz",
                 103,
                 TimeUnit.SECONDS,
-                R.raw.jazz_in_paris,
+                "jazz_in_paris.mp3",
                 R.drawable.album_jazz_blues,
                 "album_jazz_blues");
         createMediaMetadataCompat(
@@ -58,18 +59,7 @@ public class MusicLibrary {
                 "Rock",
                 160,
                 TimeUnit.SECONDS,
-                R.raw.the_coldest_shoulder,
-                R.drawable.album_youtube_audio_library_rock_2,
-                "album_youtube_audio_library_rock_2");
-        createMediaMetadataCompat(
-                "test_snippet",
-                "Test Snippet",
-                "The 126ers",
-                "Youtube Audio Library Rock 2",
-                "Rock",
-                4662,
-                TimeUnit.MILLISECONDS,
-                R.raw.trimmed,
+                "the_coldest_shoulder.mp3",
                 R.drawable.album_youtube_audio_library_rock_2,
                 "album_youtube_audio_library_rock_2");
     }
@@ -78,16 +68,13 @@ public class MusicLibrary {
         return "root";
     }
 
-    public static String getSongUri(String mediaId) {
-        return "android.resource://" + BuildConfig.APPLICATION_ID + "/" + getMusicRes(mediaId);
-    }
-
     private static String getAlbumArtUri(String albumArtResName) {
-        return "android.resource://" + BuildConfig.APPLICATION_ID + "/drawable/" + albumArtResName;
+        return ContentResolver.SCHEME_ANDROID_RESOURCE + "://" +
+                BuildConfig.APPLICATION_ID + "/drawable/" + albumArtResName;
     }
 
-    public static int getMusicRes(String mediaId) {
-        return musicRes.containsKey(mediaId) ? musicRes.get(mediaId) : 0;
+    public static String getMusicFilename(String mediaId) {
+        return musicFileName.containsKey(mediaId) ? musicFileName.get(mediaId) : null;
     }
 
     private static int getAlbumRes(String mediaId) {
@@ -156,7 +143,7 @@ public class MusicLibrary {
             String genre,
             long duration,
             TimeUnit durationUnit,
-            int musicResId,
+            String musicFilename,
             int albumArtResId,
             String albumArtResName) {
         music.put(
@@ -177,6 +164,6 @@ public class MusicLibrary {
                         .putString(MediaMetadataCompat.METADATA_KEY_TITLE, title)
                         .build());
         albumRes.put(mediaId, albumArtResId);
-        musicRes.put(mediaId, musicResId);
+        musicFileName.put(mediaId, musicFilename);
     }
 }

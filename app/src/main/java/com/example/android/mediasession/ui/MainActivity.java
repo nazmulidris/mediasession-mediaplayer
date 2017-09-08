@@ -17,47 +17,39 @@
 package com.example.android.mediasession.ui;
 
 import android.os.Bundle;
-import android.support.v4.media.MediaBrowserCompat;
+import android.support.annotation.Nullable;
 import android.support.v4.media.MediaMetadataCompat;
+import android.support.v4.media.session.MediaControllerCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ScrollView;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.example.android.mediasession.R;
 import com.example.android.mediasession.client.MediaBrowserAdapter;
 import com.example.android.mediasession.client.MediaBrowserChangeListener;
-import com.example.android.mediasession.service.PlaybackInfoListener;
-
-import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MS_MainActivity";
 
-    private TextView mTextDebug;
+    private ImageView mAlbumArt;
+    private TextView mTitleTextView;
+    private TextView mArtistTextView;
+    private ImageView mMediaControlsImage;
     private Button mButtonPlay;
-    private Button mButtonPause;
     private Button mButtonPrevious;
     private Button mButtonNext;
-    private Button mButtonStop;
-    private SeekBar mSeekBarAudio;
-    private ScrollView mScrollContainer;
+    private MediaSeekBar mSeekBarAudio;
 
     private MediaBrowserAdapter mMediaBrowserAdapter;
     private MediaBrowserListener mMediaBrowserListener;
-    private PlaybackProgress mPlaybackProgressListener;
 
-    // This is used to synchronize the PlaybackProgress and SeekBar so when the user is moving
-    // the scrubber on the SeekBar, it doesn't get updated automatically.
-    private boolean mUserIsSeeking;
+    private boolean mIsPlaying;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -67,83 +59,26 @@ public class MainActivity extends AppCompatActivity {
         mMediaBrowserAdapter = new MediaBrowserAdapter(this);
         mMediaBrowserListener = new MediaBrowserListener();
         mMediaBrowserAdapter.addListener(mMediaBrowserListener);
-        mPlaybackProgressListener = new PlaybackProgress();
-        mMediaBrowserAdapter.addListener(mPlaybackProgressListener);
-        respondToSeekBarDragByUser();
-    }
-
-    private void respondToSeekBarDragByUser() {
-        mSeekBarAudio.setOnSeekBarChangeListener(
-                new SeekBar.OnSeekBarChangeListener() {
-                    int userSelectedPosition = 0;
-
-                    @Override
-                    public void onStartTrackingTouch(SeekBar seekBar) {
-                        mUserIsSeeking = true;
-                    }
-
-                    @Override
-                    public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                        if (fromUser) {
-                            userSelectedPosition = progress;
-                        }
-                    }
-
-                    @Override
-                    public void onStopTrackingTouch(SeekBar seekBar) {
-                        mUserIsSeeking = false;
-                        mMediaBrowserAdapter.getTransportControls().seekTo(
-                                Long.valueOf(userSelectedPosition));
-                        mPlaybackProgressListener.seekTo(userSelectedPosition);
-                        Log.d(TAG,
-                              String.format("onStopTrackingTouch: seekTo(%d)",
-                                            userSelectedPosition));
-                    }
-                });
     }
 
     private void initializeUI() {
-        mTextDebug = (TextView) findViewById(R.id.text_debug);
-        mButtonStop = (Button) findViewById(R.id.button_stop);
-        mButtonPlay = (Button) findViewById(R.id.button_play);
-        mButtonPause = (Button) findViewById(R.id.button_pause);
-        mButtonPrevious = (Button) findViewById(R.id.button_previous);
-        mButtonNext = (Button) findViewById(R.id.button_next);
-        mSeekBarAudio = (SeekBar) findViewById(R.id.seekbar_audio);
-        mScrollContainer = (ScrollView) findViewById(R.id.scroll_container);
+        mTitleTextView = findViewById(R.id.song_title);
+        mArtistTextView = findViewById(R.id.song_artist);
+        mAlbumArt = findViewById(R.id.album_art);
+        mMediaControlsImage = findViewById(R.id.media_controls);
+        mButtonPlay = findViewById(R.id.button_play);
+        mButtonPrevious = findViewById(R.id.button_previous);
+        mButtonNext = findViewById(R.id.button_next);
+        mSeekBarAudio = findViewById(R.id.seekbar_audio);
 
-        mButtonPause.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        mMediaBrowserAdapter.getTransportControls().pause();
-                    }
-                });
-        mButtonStop.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        mMediaBrowserAdapter.getTransportControls().stop();
-                    }
-                });
         mButtonPlay.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        MediaMetadataCompat loadedMetadata =
-                                mMediaBrowserAdapter.getState().getMediaMetadata();
-                        boolean isMusicLoaded = loadedMetadata != null;
-                        if (!isMusicLoaded) {
-                            String mediaId = mMediaBrowserAdapter
-                                    .getMediaItemList()
-                                    .get(0)
-                                    .getMediaId();
-                            mMediaBrowserAdapter
-                                    .getTransportControls().playFromMediaId(mediaId, null);
-                            Log.d(TAG, "onClick: play newly-loaded media");
+                        if (mIsPlaying) {
+                            mMediaBrowserAdapter.getTransportControls().pause();
                         } else {
                             mMediaBrowserAdapter.getTransportControls().play();
-                            Log.d(TAG, "onClick: Play pre-loaded media");
                         }
                     }
                 });
@@ -172,172 +107,39 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public void onStop() {
         super.onStop();
+        mSeekBarAudio.disconnectController();
         mMediaBrowserAdapter.onStop();
     }
 
     public class MediaBrowserListener extends MediaBrowserChangeListener {
 
+        @Override
+        public void onConnected(@Nullable MediaControllerCompat mediaController) {
+            super.onConnected(mediaController);
+            mSeekBarAudio.setMediaController(mediaController);
+        }
+
         // TODO: 8/7/17 Update the play/pause button when state changes.
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
-            StringBuffer stateToString = PlaybackInfoListener.stateToString(playbackState);
-            long position = getPosition(playbackState);
-            logToUI(String.format("\nPlayback State Updated: %s", stateToString));
-            logToUI(String.format("position: %d", position));
-/*
-            if (state == null
-                || state.getState() == PlaybackState.STATE_PAUSED
-                || state.getState() == PlaybackState.STATE_STOPPED) {
-                mPlayPause.setImageDrawable(
-                        ContextCompat.getDrawable(this, R.drawable.ic_play_arrow_black_36dp));
-            } else {
-                mPlayPause.setImageDrawable(
-                        ContextCompat.getDrawable(this, R.drawable.ic_pause_black_36dp));
-            }
-            mPlaybackControls.setVisibility(state == null ? View.GONE : View.VISIBLE);
-*/
+            mIsPlaying = playbackState != null &&
+                    playbackState.getState() == PlaybackStateCompat.STATE_PLAYING;
+            mMediaControlsImage.setPressed(mIsPlaying);
         }
 
         // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
-            String metadataString = mediaMetadata == null
-                                    ? "NULL"
-                                    : mediaMetadata.getDescription().toString();
-            long duration = getDuration(mediaMetadata);
-            logToUI(String.format("\nMetadata updated: %s", metadataString));
-            logToUI(String.format("duration: %d", duration));
-/*
-        mTitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getTitle());
-        mSubtitle.setText(mCurrentMetadata == null ? "" : mCurrentMetadata.getDescription().getSubtitle());
-        mAlbumArt.setImageBitmap(
-                mCurrentMetadata == null
-                ? null
-                : MusicLibrary.getAlbumBitmap(this, mCurrentMetadata.getDescription().getMediaId()));
-*/
-        }
-
-        @Override
-        public void onMediaLoaded(List<MediaBrowserCompat.MediaItem> mediaItemList) {
-            if (mediaItemList != null) {
-                StringBuffer stringBuffer = new StringBuffer();
-                for (int i = 0; i < mediaItemList.size(); i++) {
-                    MediaBrowserCompat.MediaItem mediaItem = mediaItemList.get(i);
-                    stringBuffer
-                            .append("[").append(i).append("] ")
-                            .append(mediaItem.getDescription().toString())
-                            .append("\n");
-                }
-                logToUI(String.format("\nonMediaLoaded:\n%s", stringBuffer));
-            } else {
-                logToUI(String.format("\nonMediaLoaded:\n%s", "NULL"));
+            if (mediaMetadata == null) {
+                return;
             }
-        }
-
-        public void logToUI(String message) {
-            if (mTextDebug != null) {
-                mTextDebug.append(message);
-                mTextDebug.append("\n");
-                // Moves the scrollContainer focus to the end.
-                mScrollContainer.post(
-                        new Runnable() {
-                            @Override
-                            public void run() {
-                                mScrollContainer.fullScroll(ScrollView.FOCUS_DOWN);
-                            }
-                        });
-            }
-        }
-
-    }
-
-    public class PlaybackProgress extends MediaBrowserChangeListener {
-
-        public static final int PLAYBACK_POSITION_REFRESH_INTERVAL_MS = 1000;
-
-        private ScheduledExecutorService mExecutor;
-
-        private boolean mPaused;
-        private long mTimePlayPressed;
-        private long mPlaybackTime;
-        private MediaMetadataCompat currentlyLoadedMedia;
-
-        @Override
-        public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
-            if (currentlyLoadedMedia == null) {
-                currentlyLoadedMedia = mediaMetadata;
-            }
-            stopUpdating();
-            int duration = getDuration(mediaMetadata).intValue();
-            mSeekBarAudio.setMax(duration);
-            mSeekBarAudio.setProgress(0);
-        }
-
-        @Override
-        public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
-            // Change the progress reporting UI so that it matches the current state.
-            if (playbackState != null) {
-                switch (playbackState.getState()) {
-                    case PlaybackStateCompat.STATE_PLAYING:
-                        startUpdating(getPosition(playbackState).intValue(), false);
-                        break;
-                    case PlaybackStateCompat.STATE_PAUSED:
-                        startUpdating(getPosition(playbackState).intValue(), true);
-                        break;
-                    case PlaybackStateCompat.STATE_STOPPED:
-                        stopUpdating();
-                        mSeekBarAudio.setProgress(getPosition(playbackState).intValue());
-                        break;
-                }
-            } else {
-                // State is empty.
-                stopUpdating();
-            }
-        }
-
-        public void seekTo(int position) {
-            mPlaybackTime = position;
-            mTimePlayPressed = System.currentTimeMillis();
-        }
-
-        private void task() {
-            long currentTime = System.currentTimeMillis();
-            if (!mPaused) {
-                mPlaybackTime += currentTime - mTimePlayPressed;
-            }
-            mTimePlayPressed = currentTime;
-            if (!mUserIsSeeking) {
-                mSeekBarAudio.setProgress(Long.valueOf(mPlaybackTime).intValue());
-            } else {
-                Log.d(TAG,
-                      "PlaybackProgress.task: skipping setProgress, since user is moving scrubber");
-            }
-        }
-
-        private void stopUpdating() {
-            mPaused = false;
-            if (mExecutor != null) {
-                mExecutor.shutdownNow();
-                mExecutor = null;
-            }
-        }
-
-        private void startUpdating(int startPosition, boolean isPaused) {
-            mPaused = isPaused;
-            if (mExecutor == null) {
-                mExecutor = Executors.newSingleThreadScheduledExecutor();
-                Runnable task = new Runnable() {
-                    @Override
-                    public void run() {
-                        task();
-                    }
-                };
-                mExecutor.scheduleAtFixedRate(
-                        task, 0, PLAYBACK_POSITION_REFRESH_INTERVAL_MS, TimeUnit.MILLISECONDS);
-                mTimePlayPressed = System.currentTimeMillis();
-                mPlaybackTime = startPosition;
-            }
+            mTitleTextView.setText(
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_TITLE));
+            mArtistTextView.setText(
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_ARTIST));
+            mAlbumArt.setImageBitmap(MusicLibrary.getAlbumBitmap(
+                    MainActivity.this,
+                    mediaMetadata.getString(MediaMetadataCompat.METADATA_KEY_MEDIA_ID)));
         }
     }
-
 }
