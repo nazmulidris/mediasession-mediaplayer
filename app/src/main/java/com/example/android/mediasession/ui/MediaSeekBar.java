@@ -24,6 +24,7 @@ import android.support.v4.media.session.MediaSessionCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 import android.support.v7.widget.AppCompatSeekBar;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.view.animation.LinearInterpolator;
 import android.widget.SeekBar;
 
@@ -117,6 +118,7 @@ public class MediaSeekBar extends AppCompatSeekBar {
                     ? (int) state.getPosition()
                     : 0;
             setProgress(progress);
+            Log.d("nicole", "Set progress to: " + (progress / 1000.0f));
 
             // If the media is playing then the seekbar should follow it, and the easiest
             // way to do that is to create a ValueAnimator to update it so the bar reaches

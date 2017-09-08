@@ -22,6 +22,7 @@ import android.media.MediaPlayer;
 import android.os.SystemClock;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
+import android.util.Log;
 
 import com.example.android.mediasession.service.PlaybackInfoListener;
 import com.example.android.mediasession.service.PlayerAdapter;
@@ -41,6 +42,10 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
     private MediaMetadataCompat mCurrentMedia;
     private int mState;
     private boolean mCurrentMediaPlayedToCompletion;
+
+    // Work-around for a MediaPlayer bug related to the behavior of MediaPlayer.seekTo()
+    // while not playing.
+    private int mSeekWhileNotPlaying = -1;
 
     public MediaPlayerAdapter(Context context, PlaybackInfoListener listener) {
         super(context);
@@ -169,10 +174,22 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
             mCurrentMediaPlayedToCompletion = true;
         }
 
+        // Work around for MediaPlayer.getCurrentPosition() when it changes while not playing.
+        final long reportPosition;
+        if (mSeekWhileNotPlaying >= 0) {
+            reportPosition = mSeekWhileNotPlaying;
+
+            if (mState == PlaybackStateCompat.STATE_PLAYING) {
+                mSeekWhileNotPlaying = -1;
+            }
+        } else {
+            reportPosition = mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition();
+        }
+
         final PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
         stateBuilder.setActions(getAvailableActions());
         stateBuilder.setState(mState,
-                              mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
+                              reportPosition,
                               1.0f,
                               SystemClock.elapsedRealtime());
         mPlaybackInfoListener.onPlaybackStateChange(stateBuilder.build());
@@ -216,11 +233,14 @@ public final class MediaPlayerAdapter extends PlayerAdapter {
     @Override
     public void seekTo(long position) {
         if (mMediaPlayer != null) {
+            if (!mMediaPlayer.isPlaying()) {
+                mSeekWhileNotPlaying = (int) position;
+            }
             mMediaPlayer.seekTo((int) position);
 
-            if (mMediaPlayer.isPlaying()) {
-                setNewState(PlaybackStateCompat.STATE_PLAYING);
-            }
+            // Set the state (to the current state) because the position changed and should
+            // be reported to clients.
+            setNewState(mState);
         }
     }
 
