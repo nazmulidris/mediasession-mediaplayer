@@ -81,8 +81,9 @@ public class MusicLibrary {
         return albumRes.containsKey(mediaId) ? albumRes.get(mediaId) : 0;
     }
 
-    public static Bitmap getAlbumBitmap(Context ctx, String mediaId) {
-        return BitmapFactory.decodeResource(ctx.getResources(), MusicLibrary.getAlbumRes(mediaId));
+    public static Bitmap getAlbumBitmap(Context context, String mediaId) {
+        return BitmapFactory.decodeResource(context.getResources(),
+                MusicLibrary.getAlbumRes(mediaId));
     }
 
     public static List<MediaBrowserCompat.MediaItem> getMediaItems() {
@@ -95,25 +96,9 @@ public class MusicLibrary {
         return result;
     }
 
-    public static String getPreviousSong(String currentMediaId) {
-        String prevMediaId = music.lowerKey(currentMediaId);
-        if (prevMediaId == null) {
-            prevMediaId = music.firstKey();
-        }
-        return prevMediaId;
-    }
-
-    public static String getNextSong(String currentMediaId) {
-        String nextMediaId = music.higherKey(currentMediaId);
-        if (nextMediaId == null) {
-            nextMediaId = music.firstKey();
-        }
-        return nextMediaId;
-    }
-
-    public static MediaMetadataCompat getMetadata(Context ctx, String mediaId) {
+    public static MediaMetadataCompat getMetadata(Context context, String mediaId) {
         MediaMetadataCompat metadataWithoutBitmap = music.get(mediaId);
-        Bitmap albumArt = getAlbumBitmap(ctx, mediaId);
+        Bitmap albumArt = getAlbumBitmap(context, mediaId);
 
         // Since MediaMetadataCompat is immutable, we need to create a copy to set the album art.
         // We don't set it initially on all items so that they don't take unnecessary memory.

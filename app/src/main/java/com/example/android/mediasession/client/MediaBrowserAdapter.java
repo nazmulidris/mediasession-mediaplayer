@@ -35,7 +35,19 @@ import java.util.List;
 
 public class MediaBrowserAdapter {
 
-    public static final String TAG = "MS_ClientHolder";
+    public static final String TAG = MediaBrowserAdapter.class.getSimpleName();
+
+    public static abstract class MediaBrowserChangeListener {
+
+        public void onConnected(@Nullable MediaControllerCompat mediaController) {
+        }
+
+        public void onMetadataChanged(@Nullable MediaMetadataCompat mediaMetadata) {
+        }
+
+        public void onPlaybackStateChanged(@Nullable PlaybackStateCompat playbackState) {
+        }
+    }
 
     private final InternalState mState;
 

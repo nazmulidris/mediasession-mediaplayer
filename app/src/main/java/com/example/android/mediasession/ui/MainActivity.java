@@ -25,25 +25,18 @@ import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageView;
-import android.widget.SeekBar;
 import android.widget.TextView;
 
 import com.example.android.mediasession.R;
 import com.example.android.mediasession.client.MediaBrowserAdapter;
-import com.example.android.mediasession.client.MediaBrowserChangeListener;
 import com.example.android.mediasession.service.contentcatalogs.MusicLibrary;
 
 public class MainActivity extends AppCompatActivity {
-
-    private static final String TAG = "MS_MainActivity";
 
     private ImageView mAlbumArt;
     private TextView mTitleTextView;
     private TextView mArtistTextView;
     private ImageView mMediaControlsImage;
-    private Button mButtonPlay;
-    private Button mButtonPrevious;
-    private Button mButtonNext;
     private MediaSeekBar mSeekBarAudio;
 
     private MediaBrowserAdapter mMediaBrowserAdapter;
@@ -66,12 +59,19 @@ public class MainActivity extends AppCompatActivity {
         mArtistTextView = findViewById(R.id.song_artist);
         mAlbumArt = findViewById(R.id.album_art);
         mMediaControlsImage = findViewById(R.id.media_controls);
-        mButtonPlay = findViewById(R.id.button_play);
-        mButtonPrevious = findViewById(R.id.button_previous);
-        mButtonNext = findViewById(R.id.button_next);
         mSeekBarAudio = findViewById(R.id.seekbar_audio);
 
-        mButtonPlay.setOnClickListener(
+        final Button buttonPrevious = findViewById(R.id.button_previous);
+        buttonPrevious.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        mMediaBrowserAdapter.getTransportControls().skipToPrevious();
+                    }
+                });
+
+        final Button buttonPlay = findViewById(R.id.button_play);
+        buttonPlay.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
@@ -82,14 +82,9 @@ public class MainActivity extends AppCompatActivity {
                         }
                     }
                 });
-        mButtonPrevious.setOnClickListener(
-                new View.OnClickListener() {
-                    @Override
-                    public void onClick(View view) {
-                        mMediaBrowserAdapter.getTransportControls().skipToPrevious();
-                    }
-                });
-        mButtonNext.setOnClickListener(
+
+        final Button buttonNext = findViewById(R.id.button_next);
+        buttonNext.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
@@ -111,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
         mMediaBrowserAdapter.onStop();
     }
 
-    public class MediaBrowserListener extends MediaBrowserChangeListener {
+    public class MediaBrowserListener extends MediaBrowserAdapter.MediaBrowserChangeListener {
 
         @Override
         public void onConnected(@Nullable MediaControllerCompat mediaController) {
@@ -119,7 +114,6 @@ public class MainActivity extends AppCompatActivity {
             mSeekBarAudio.setMediaController(mediaController);
         }
 
-        // TODO: 8/7/17 Update the play/pause button when state changes.
         @Override
         public void onPlaybackStateChanged(PlaybackStateCompat playbackState) {
             mIsPlaying = playbackState != null &&
@@ -127,7 +121,6 @@ public class MainActivity extends AppCompatActivity {
             mMediaControlsImage.setPressed(mIsPlaying);
         }
 
-        // TODO: 8/7/17 Update the UI when new metadata is loaded via the MediaController.
         @Override
         public void onMetadataChanged(MediaMetadataCompat mediaMetadata) {
             if (mediaMetadata == null) {

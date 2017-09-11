@@ -26,6 +26,10 @@ import android.support.annotation.NonNull;
 import android.support.v4.media.MediaMetadataCompat;
 import android.support.v4.media.session.PlaybackStateCompat;
 
+/**
+ * Abstract player implementation that handles playing music with proper handling of headphones
+ * and audio focus.
+ */
 public abstract class PlayerAdapter {
 
     private static final float MEDIA_VOLUME_DEFAULT = 1.0f;
@@ -72,6 +76,9 @@ public abstract class PlayerAdapter {
         }
     }
 
+    /**
+     * Called when media is ready to be played and indicates the app has audio focus.
+     */
     protected abstract void onPlay();
 
     public final void pause() {
@@ -80,6 +87,9 @@ public abstract class PlayerAdapter {
         onPause();
     }
 
+    /**
+     * Called when media must be paused.
+     */
     protected abstract void onPause();
 
     public final void stop() {
@@ -88,6 +98,10 @@ public abstract class PlayerAdapter {
         onStop();
     }
 
+    /**
+     * Called when the media must be stopped. The player should clean up resources at this
+     * point.
+     */
     protected abstract void onStop();
 
     public abstract void seekTo(long position);
