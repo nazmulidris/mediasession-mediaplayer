@@ -16,8 +16,10 @@
 
 package com.example.android.mediasession.client;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
+import android.media.AudioManager;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -56,7 +58,8 @@ public class MediaBrowserAdapter {
     @Nullable
     private MediaControllerCompat mMediaController;
 
-    public MediaBrowserAdapter(Context context) {
+    public MediaBrowserAdapter(Activity context) {
+        context.setVolumeControlStream(AudioManager.STREAM_MUSIC);
         mContext = context;
         mState = new InternalState();
     }
