@@ -18,6 +18,9 @@ package com.example.android.mediasession.service.players;
 
 import android.content.Context;
 import android.content.res.AssetFileDescriptor;
+import android.media.AudioAttributes;
+import android.media.AudioFocusRequest;
+import android.media.AudioManager;
 import android.media.MediaPlayer;
 import android.os.SystemClock;
 import android.support.v4.media.MediaMetadataCompat;
@@ -33,8 +36,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 /**
- * Exposes the functionality of the {@link MediaPlayer} and implements the {@link PlayerAdapter}
- * so that {@link MainActivity} can control music playback.
+ * Exposes the functionality of the {@link MediaPlayer} and implements the {@link PlayerAdapter} so
+ * that {@link MainActivity} can control music playback.
  */
 public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCompletionListener {
 
@@ -47,25 +50,88 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     private MediaMetadataCompat mCurrentMedia;
     private int mState;
     private boolean mCurrentMediaPlayedToCompletion;
+    private AudioManager mAudioManager;
+    private AudioAttributes mAudioAttributes;
+    private AudioFocusRequest mAudioFocusRequest;
 
     public MediaPlayerAdapter(Context context, PlaybackInfoListener listener) {
         mContext = context.getApplicationContext();
         mPlaybackInfoListener = listener;
+        setupAudioFocus();
     }
 
     /**
      * Once the {@link MediaPlayer} is released, it can't be used again, and another one has to be
      * created. In the onStop() method of the {@link MainActivity} the {@link MediaPlayer} is
-     * released. Then in the onStart() of the {@link MainActivity} a new {@link MediaPlayer}
-     * object has to be created. That's why this method is private, and called by load(int) and
-     * not the constructor.
+     * released. Then in the onStart() of the {@link MainActivity} a new {@link MediaPlayer} object
+     * has to be created. That's why this method is private, and called by load(int) and not the
+     * constructor.
      */
     private void initializeMediaPlayer() {
         if (mMediaPlayer == null) {
             mMediaPlayer = new MediaPlayer();
+            mMediaPlayer.setAudioAttributes(mAudioAttributes);
             mMediaPlayer.setOnCompletionListener(this);
             logToUI("mMediaPlayer = new MediaPlayer()");
         }
+    }
+
+    // Manages Audio Focus.
+    private void setupAudioFocus() {
+        mAudioManager = (AudioManager) mContext.getSystemService(Context.AUDIO_SERVICE);
+        mAudioAttributes =
+                new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                        .build();
+        mAudioFocusRequest =
+                new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                        .setAudioAttributes(mAudioAttributes)
+                        .setAcceptsDelayedFocusGain(false)
+                        .setOnAudioFocusChangeListener(
+                                new AudioManager.OnAudioFocusChangeListener() {
+                                    @Override
+                                    public void onAudioFocusChange(int focusChange) {
+                                        MediaPlayerAdapter.this.onAudioFocusChange(focusChange);
+                                    }
+                                })
+                        .build();
+    }
+
+    private void onAudioFocusChange(int focusChange) {
+        switch (focusChange) {
+            case AudioManager.AUDIOFOCUS_GAIN:
+                logToUI("Audio Focus: Gained");
+                start();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS:
+                logToUI("Audio Focus: Lost Permanent");
+                stop();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
+                logToUI("Audio Focus: Lost Transient");
+                pause();
+                break;
+            case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
+                logToUI("Audio Focus: Lost Transient & Duck");
+                pause();
+                break;
+        }
+    }
+
+    public void requestPlayback() {
+        int res = mAudioManager.requestAudioFocus(mAudioFocusRequest);
+        if (res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            logToUI("Audio Focus: Requested & Granted");
+            start();
+        } else {
+            logToUI("Audio Focus: Requested & NOT Granted");
+        }
+    }
+
+    public void releaseAudioFocus() {
+        mAudioManager.abandonAudioFocusRequest(mAudioFocusRequest);
+        logToUI("Audio Focus: Abandoned");
     }
 
     // Implements PlaybackControl.
@@ -104,7 +170,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
             if (isPlaying()) {
                 return;
             } else {
-                play();
+                requestPlayback();
                 return;
             }
         } else {
@@ -134,7 +200,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         initializeProgressCallback();
         logToUI("initializeProgressCallback()");
 
-        play();
+        requestPlayback();
     }
 
     @Override
@@ -142,6 +208,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         // Regardless of whether or not the MediaPlayer has been created / started, the state must
         // be updated, so that MediaNotificationManager can take down the notification.
         setNewState(PlaybackStateCompat.STATE_STOPPED);
+        releaseAudioFocus();
         release();
         logToUI("stop() and updatePlaybackState(STOPPED)");
     }
@@ -163,10 +230,12 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         return false;
     }
 
-    public void play() {
+    public void start() {
         if (mMediaPlayer != null && !mMediaPlayer.isPlaying()) {
-            logToUI(String.format("playbackStart() %s",
-                                  mContext.getResources().getResourceEntryName(mResourceId)));
+            logToUI(
+                    String.format(
+                            "playbackStart() %s",
+                            mContext.getResources().getResourceEntryName(mResourceId)));
             mMediaPlayer.start();
             setNewState(PlaybackStateCompat.STATE_PLAYING);
             startUpdatingCallbackWithPosition();
@@ -184,6 +253,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
 
     @Override
     public void onCompletion(MediaPlayer mediaPlayer) {
+        releaseAudioFocus();
         stopUpdatingCallbackWithPosition(true);
         logToUI("MediaPlayer playback completed");
         mPlaybackInfoListener.onPlaybackCompleted();
@@ -202,44 +272,46 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
 
         PlaybackStateCompat.Builder stateBuilder = new PlaybackStateCompat.Builder();
         stateBuilder.setActions(getAvailableActions());
-        stateBuilder.setState(mState,
-                              mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
-                              1.0f,
-                              SystemClock.elapsedRealtime());
+        stateBuilder.setState(
+                mState,
+                mMediaPlayer == null ? 0 : mMediaPlayer.getCurrentPosition(),
+                1.0f,
+                SystemClock.elapsedRealtime());
         mPlaybackInfoListener.onPlaybackStateChange(stateBuilder.build());
     }
 
     /**
-     * Set the current capabilities available on this session. Note: If a capability is not
-     * listed in the bitmask of capabilities then the MediaSession will not handle it. For
-     * example, if you don't want ACTION_STOP to be handled by the MediaSession, then don't
-     * included it in the bitmask that's returned.
+     * Set the current capabilities available on this session. Note: If a capability is not listed
+     * in the bitmask of capabilities then the MediaSession will not handle it. For example, if you
+     * don't want ACTION_STOP to be handled by the MediaSession, then don't included it in the
+     * bitmask that's returned.
      */
     @PlaybackStateCompat.Actions
     private long getAvailableActions() {
-        long actions = PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
-                       | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
-                       | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
-                       | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+        long actions =
+                PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID
+                | PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH
+                | PlaybackStateCompat.ACTION_SKIP_TO_NEXT
+                | PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
         switch (mState) {
             case PlaybackStateCompat.STATE_STOPPED:
-                actions |= PlaybackStateCompat.ACTION_PLAY
-                           | PlaybackStateCompat.ACTION_PAUSE;
+                actions |= PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_PAUSE;
                 break;
             case PlaybackStateCompat.STATE_PLAYING:
-                actions |= PlaybackStateCompat.ACTION_STOP
-                           | PlaybackStateCompat.ACTION_PAUSE
-                           | PlaybackStateCompat.ACTION_SEEK_TO;
+                actions |=
+                        PlaybackStateCompat.ACTION_STOP
+                        | PlaybackStateCompat.ACTION_PAUSE
+                        | PlaybackStateCompat.ACTION_SEEK_TO;
                 break;
             case PlaybackStateCompat.STATE_PAUSED:
-                actions |= PlaybackStateCompat.ACTION_PLAY
-                           | PlaybackStateCompat.ACTION_STOP;
+                actions |= PlaybackStateCompat.ACTION_PLAY | PlaybackStateCompat.ACTION_STOP;
                 break;
             default:
-                actions |= PlaybackStateCompat.ACTION_PLAY
-                           | PlaybackStateCompat.ACTION_PLAY_PAUSE
-                           | PlaybackStateCompat.ACTION_STOP
-                           | PlaybackStateCompat.ACTION_PAUSE;
+                actions |=
+                        PlaybackStateCompat.ACTION_PLAY
+                        | PlaybackStateCompat.ACTION_PLAY_PAUSE
+                        | PlaybackStateCompat.ACTION_STOP
+                        | PlaybackStateCompat.ACTION_PAUSE;
         }
         return actions;
     }
@@ -252,27 +324,25 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         }
     }
 
-    /**
-     * Syncs the mMediaPlayer position with mPlaybackProgressCallback via recurring task.
-     */
+    // Syncs the mMediaPlayer position with mPlaybackProgressCallback via recurring task.
     private void startUpdatingCallbackWithPosition() {
         if (mExecutor == null) {
             mExecutor = Executors.newSingleThreadScheduledExecutor();
         }
         if (mSeekbarPositionUpdateTask == null) {
-            mSeekbarPositionUpdateTask = new Runnable() {
-                @Override
-                public void run() {
-                    updateProgressCallbackTask();
-                }
-            };
+            mSeekbarPositionUpdateTask =
+                    new Runnable() {
+                        @Override
+                        public void run() {
+                            updateProgressCallbackTask();
+                        }
+                    };
         }
         mExecutor.scheduleAtFixedRate(
                 mSeekbarPositionUpdateTask,
                 0,
                 MainActivity.PlaybackProgress.PLAYBACK_POSITION_REFRESH_INTERVAL_MS,
-                TimeUnit.MILLISECONDS
-        );
+                TimeUnit.MILLISECONDS);
     }
 
     // Reports media playback position to mPlaybackProgressCallback.
@@ -302,8 +372,10 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         if (mPlaybackInfoListener != null) {
             mPlaybackInfoListener.onDurationChanged(duration);
             mPlaybackInfoListener.onPositionChanged(0);
-            logToUI(String.format("firing setPlaybackDuration(%d sec)",
-                                  TimeUnit.MILLISECONDS.toSeconds(duration)));
+            logToUI(
+                    String.format(
+                            "firing setPlaybackDuration(%d sec)",
+                            TimeUnit.MILLISECONDS.toSeconds(duration)));
             logToUI("firing setPlaybackPosition(0)");
         }
     }
@@ -313,5 +385,4 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
             mPlaybackInfoListener.onLogUpdated(message);
         }
     }
-
 }
