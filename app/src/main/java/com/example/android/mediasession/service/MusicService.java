@@ -166,11 +166,19 @@ public class MusicService extends MediaBrowserServiceCompat {
                     mServiceManager.moveServiceToStartedState(state);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
-                    unregisterReceiver(mBecomingNoisyReciever);
+                    try {
+                        unregisterReceiver(mBecomingNoisyReciever);
+                    } catch (IllegalArgumentException e) {
+                        // Ignore, since receiver was never registered.
+                    }
                     mServiceManager.updateNotificationForPause(state);
                     break;
                 case PlaybackStateCompat.STATE_STOPPED:
-                    unregisterReceiver(mBecomingNoisyReciever);
+                    try {
+                        unregisterReceiver(mBecomingNoisyReciever);
+                    } catch (IllegalArgumentException e) {
+                        // Ignore, since receiver was never registered.
+                    }
                     mServiceManager.moveServiceOutOfStartedState(state);
                     break;
             }
