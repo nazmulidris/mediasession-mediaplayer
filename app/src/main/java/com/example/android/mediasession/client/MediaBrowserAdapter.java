@@ -16,8 +16,10 @@
 
 package com.example.android.mediasession.client;
 
+import android.app.Activity;
 import android.content.ComponentName;
 import android.content.Context;
+import android.media.AudioManager;
 import android.os.RemoteException;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -66,9 +68,12 @@ public class MediaBrowserAdapter {
     @Nullable
     private MediaControllerCompat mMediaController;
 
-    public MediaBrowserAdapter(Context context) {
+    public MediaBrowserAdapter(Activity context) {
         mContext = context;
         mState = new InternalState();
+        // When audio isn't being played back, pressing the volume buttons will change the volume
+        // of media, and not the ringer.
+        context.setVolumeControlStream(AudioManager.STREAM_MUSIC);
     }
 
     public void onStart() {
