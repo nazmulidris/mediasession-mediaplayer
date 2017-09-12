@@ -17,7 +17,11 @@
 package com.example.android.mediasession.service;
 
 import android.app.Notification;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.media.MediaBrowserCompat;
@@ -40,8 +44,10 @@ public class MusicService extends MediaBrowserServiceCompat {
     private MediaSessionCompat mSession;
     private PlayerAdapter mPlayback;
     private MediaNotificationManager mMediaNotificationManager;
-    public MediaSessionCallback mCallback;
+    private MediaSessionCallback mCallback;
     private boolean mServiceInStartedState;
+    private MediaPlayerListener mPlayerListener;
+    private BecomingNoisyReceiver mBecomingNoisyReciever;
 
     @Override
     public void onCreate() {
@@ -58,7 +64,11 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         mMediaNotificationManager = new MediaNotificationManager(this);
 
-        mPlayback = new MediaPlayerAdapter(this, new MediaPlayerListener());
+        mPlayerListener = new MediaPlayerListener();
+        mPlayback = new MediaPlayerAdapter(this, mPlayerListener);
+
+        mBecomingNoisyReciever = new BecomingNoisyReceiver();
+
         Log.d(TAG, "onCreate: MusicService creating MediaSession, and MediaNotificationManager");
     }
 
@@ -119,14 +129,12 @@ public class MusicService extends MediaBrowserServiceCompat {
 
         @Override
         public void onSkipToNext() {
-            onPlayFromMediaId(
-                    MusicLibrary.getNextSong(mPlayback.getCurrentMediaId()), null);
+            onPlayFromMediaId(MusicLibrary.getNextSong(mPlayback.getCurrentMediaId()), null);
         }
 
         @Override
         public void onSkipToPrevious() {
-            onPlayFromMediaId(
-                    MusicLibrary.getPreviousSong(mPlayback.getCurrentMediaId()), null);
+            onPlayFromMediaId(MusicLibrary.getPreviousSong(mPlayback.getCurrentMediaId()), null);
         }
 
         @Override
@@ -152,12 +160,17 @@ public class MusicService extends MediaBrowserServiceCompat {
             // Manage the started state of this service.
             switch (state.getState()) {
                 case PlaybackStateCompat.STATE_PLAYING:
+                    registerReceiver(
+                            mBecomingNoisyReciever,
+                            new IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY));
                     mServiceManager.moveServiceToStartedState(state);
                     break;
                 case PlaybackStateCompat.STATE_PAUSED:
+                    unregisterReceiver(mBecomingNoisyReciever);
                     mServiceManager.updateNotificationForPause(state);
                     break;
                 case PlaybackStateCompat.STATE_STOPPED:
+                    unregisterReceiver(mBecomingNoisyReciever);
                     mServiceManager.moveServiceOutOfStartedState(state);
                     break;
             }
@@ -177,8 +190,7 @@ public class MusicService extends MediaBrowserServiceCompat {
 
                 if (!mServiceInStartedState) {
                     ContextCompat.startForegroundService(
-                            MusicService.this,
-                            new Intent(MusicService.this, MusicService.class));
+                            MusicService.this, new Intent(MusicService.this, MusicService.class));
                     mServiceInStartedState = true;
                     generateLog(state, "startForegroundService(true)");
                 }
@@ -192,7 +204,8 @@ public class MusicService extends MediaBrowserServiceCompat {
                 Notification notification =
                         mMediaNotificationManager.getNotification(
                                 mPlayback.getCurrentMedia(), state, getSessionToken());
-                mMediaNotificationManager.getNotificationManager()
+                mMediaNotificationManager
+                        .getNotificationManager()
                         .notify(MediaNotificationManager.NOTIFICATION_ID, notification);
                 generateLog(state, "stopForeground(false)");
             }
@@ -205,16 +218,23 @@ public class MusicService extends MediaBrowserServiceCompat {
             }
 
             private void generateLog(PlaybackStateCompat state, String message) {
-                Log.d(TAG,
-                      String.format("onStateChanged(%s): %s",
-                                    PlaybackInfoListener.stateToString(state.getState()),
-                                    message
-                      )
-                );
+                Log.d(
+                        TAG,
+                        String.format(
+                                "onStateChanged(%s): %s",
+                                PlaybackInfoListener.stateToString(state.getState()), message));
             }
-
         }
-
     }
 
+    public class BecomingNoisyReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (AudioManager.ACTION_AUDIO_BECOMING_NOISY.equals(intent.getAction())) {
+                Log.d(TAG, "onReceive: Audio becoming noisy ... pausing!");
+                mPlayback.pause();
+            }
+        }
+    }
 }
