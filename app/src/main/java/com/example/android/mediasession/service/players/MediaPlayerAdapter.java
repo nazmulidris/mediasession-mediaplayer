@@ -87,7 +87,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
                         .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
                         .build();
         mAudioFocusRequest =
-                new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
+                new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                         .setAudioAttributes(mAudioAttributes)
                         .setAcceptsDelayedFocusGain(true)
                         .setOnAudioFocusChangeListener(
