@@ -53,6 +53,8 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     private AudioManager mAudioManager;
     private AudioAttributes mAudioAttributes;
     private AudioFocusRequest mAudioFocusRequest;
+    private boolean mAudioFocusPlaybackDelayed = false;
+    private boolean mAudioFocusResumeOnFocusGained = false;
 
     public MediaPlayerAdapter(Context context, PlaybackInfoListener listener) {
         mContext = context.getApplicationContext();
@@ -87,7 +89,7 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         mAudioFocusRequest =
                 new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK)
                         .setAudioAttributes(mAudioAttributes)
-                        .setAcceptsDelayedFocusGain(false)
+                        .setAcceptsDelayedFocusGain(true)
                         .setOnAudioFocusChangeListener(
                                 new AudioManager.OnAudioFocusChangeListener() {
                                     @Override
@@ -102,14 +104,22 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
         switch (focusChange) {
             case AudioManager.AUDIOFOCUS_GAIN:
                 logToUI("Audio Focus: Gained");
-                start();
+                if (mAudioFocusPlaybackDelayed || mAudioFocusResumeOnFocusGained) {
+                    mAudioFocusPlaybackDelayed = false;
+                    mAudioFocusResumeOnFocusGained = false;
+                    start();
+                }
                 break;
             case AudioManager.AUDIOFOCUS_LOSS:
                 logToUI("Audio Focus: Lost Permanent");
+                mAudioFocusResumeOnFocusGained = false;
+                mAudioFocusPlaybackDelayed = false;
                 stop();
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT:
                 logToUI("Audio Focus: Lost Transient");
+                mAudioFocusResumeOnFocusGained = true;
+                mAudioFocusPlaybackDelayed = false;
                 pause();
                 break;
             case AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK:
@@ -120,12 +130,19 @@ public final class MediaPlayerAdapter implements PlayerAdapter, MediaPlayer.OnCo
     }
 
     public void requestPlayback() {
-        int res = mAudioManager.requestAudioFocus(mAudioFocusRequest);
-        if (res == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            logToUI("Audio Focus: Requested & Granted");
-            start();
-        } else {
-            logToUI("Audio Focus: Requested & NOT Granted");
+        int audioFocus = mAudioManager.requestAudioFocus(mAudioFocusRequest);
+        switch (audioFocus) {
+            case AudioManager.AUDIOFOCUS_REQUEST_FAILED:
+                logToUI("Audio Focus: Requested & NOT Granted");
+                break;
+            case AudioManager.AUDIOFOCUS_REQUEST_GRANTED:
+                logToUI("Audio Focus: Requested & Granted");
+                start();
+                break;
+            case AudioManager.AUDIOFOCUS_REQUEST_DELAYED:
+                mAudioFocusPlaybackDelayed = true;
+                logToUI("Audio Focus: Requested & Delayed");
+                break;
         }
     }
 
